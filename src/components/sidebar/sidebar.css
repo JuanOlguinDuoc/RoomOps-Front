@@ -1,0 +1,67 @@
+.sidebar-narrow-unfoldable:not(:hover) .sidebar-footer .nav-link span {
+  display: none;
+}
+
+.roomops-sidebar {
+  --cui-sidebar-bg: var(--roomops-surface);
+  --cui-sidebar-color: var(--roomops-text-muted);
+  --cui-sidebar-brand-color: var(--roomops-text);
+  --cui-sidebar-nav-link-color: var(--roomops-text-muted);
+  --cui-sidebar-nav-link-icon-color: var(--roomops-text-muted);
+  --cui-sidebar-nav-link-hover-bg: var(--roomops-accent-soft);
+  --cui-sidebar-nav-link-hover-color: var(--roomops-text);
+  background:
+    linear-gradient(180deg, rgba(47, 61, 85, 0.96) 0%, rgba(32, 53, 77, 0.98) 52%, rgba(21, 34, 50, 1) 100%) !important;
+  border-right: 1px solid var(--roomops-border) !important;
+  color: var(--roomops-text-muted);
+}
+
+.roomops-sidebar .sidebar-header,
+.roomops-sidebar .sidebar-footer {
+  border-color: var(--roomops-border) !important;
+}
+
+.roomops-sidebar .sidebar-brand span {
+  color: var(--roomops-text);
+}
+
+.roomops-sidebar .sidebar-nav .nav-title {
+  color: var(--roomops-text);
+  letter-spacing: 0.08em;
+}
+
+.roomops-sidebar .sidebar-nav .nav-link {
+  border-radius: 10px;
+  color: var(--roomops-text-muted);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.roomops-sidebar .sidebar-nav .nav-link .nav-icon,
+.roomops-sidebar .sidebar-nav .nav-link svg {
+  color: #A4A4B7;
+  transition: color 0.2s ease;
+}
+
+.roomops-sidebar .sidebar-nav .nav-link.active,
+.roomops-sidebar .sidebar-nav .nav-link:focus-visible {
+  background-color: rgba(164, 164, 183, 0.28);
+  color: #D38690;
+}
+
+.roomops-sidebar .sidebar-nav .nav-link.active .nav-icon,
+.roomops-sidebar .sidebar-nav .nav-link.active svg,
+.roomops-sidebar .sidebar-nav .nav-link:focus-visible .nav-icon,
+.roomops-sidebar .sidebar-nav .nav-link:focus-visible svg {
+  color: #D38690;
+}
+
+.roomops-sidebar .sidebar-nav .nav-link:hover {
+  background-color: #D38690;
+  color: #F8F4FA;
+  box-shadow: 0 0 0 3px rgba(211, 134, 144, 0.45), 0 0 12px rgba(211, 134, 144, 0.35);
+}
+
+.roomops-sidebar .sidebar-nav .nav-link:hover .nav-icon,
+.roomops-sidebar .sidebar-nav .nav-link:hover svg {
+  color: #F8F4FA;
+}
