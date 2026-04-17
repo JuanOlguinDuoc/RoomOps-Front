@@ -15,20 +15,21 @@
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  --roomops-bg-1: #152232;
-  --roomops-bg-2: #20354D;
-  --roomops-bg-3: #2F3D55;
-  --roomops-surface: #20354D;
-  --roomops-surface-alt: #2F3D55;
-  --roomops-border: rgba(164, 164, 183, 0.34);
-  --roomops-text: #A4A4B7;
-  --roomops-text-muted: #A4A4B7;
-  --roomops-accent: #D38690;
-  --roomops-accent-soft: rgba(211, 134, 144, 0.28);
+  --roomops-bg-1: #1A334A;
+  --roomops-bg-2: #1E536E;
+  --roomops-bg-3: #18A3B7;
+  --roomops-surface: #1E536E;
+  --roomops-surface-alt: #5AA5CD;
+  --roomops-border: rgba(90, 165, 205, 0.35);
+  --roomops-text: #EAF8FF;
+  --roomops-text-muted: #B8DFF3;
+  --roomops-accent: #27E6EC;
+  --roomops-accent-soft: rgba(39, 230, 236, 0.22);
+  --roomops-secondary: #6F71A1;
   --roomops-app-bg:
-    radial-gradient(circle at 10% -20%, rgba(211, 134, 144, 0.3), transparent 40%),
-    radial-gradient(circle at 90% -10%, rgba(164, 164, 183, 0.22), transparent 38%),
-    linear-gradient(140deg, var(--roomops-bg-3) 0%, var(--roomops-bg-2) 45%, var(--roomops-bg-1) 100%);
+    radial-gradient(circle at 14% -12%, rgba(39, 230, 236, 0.2), transparent 42%),
+    radial-gradient(circle at 92% -20%, rgba(111, 113, 161, 0.24), transparent 40%),
+    linear-gradient(150deg, var(--roomops-bg-3) 0%, var(--roomops-bg-2) 42%, var(--roomops-bg-1) 100%);
 
   --text: var(--roomops-text-muted);
   --text-h: var(--roomops-text);
@@ -53,15 +54,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #A4A4B7;
-    --text-h: #D38690;
-    --bg: #152232;
-    --border: rgba(164, 164, 183, 0.34);
-    --code-bg: rgba(21, 34, 50, 0.82);
-    --accent: #D38690;
-    --accent-bg: rgba(211, 134, 144, 0.24);
-    --accent-border: rgba(164, 164, 183, 0.4);
-    --social-bg: rgba(47, 61, 85, 0.35);
+    --text: #B8DFF3;
+    --text-h: #27E6EC;
+    --bg: #1A334A;
+    --border: rgba(90, 165, 205, 0.35);
+    --code-bg: rgba(26, 51, 74, 0.84);
+    --accent: #27E6EC;
+    --accent-bg: rgba(39, 230, 236, 0.2);
+    --accent-border: rgba(111, 113, 161, 0.55);
+    --social-bg: rgba(30, 83, 110, 0.38);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }

@@ -3,6 +3,7 @@
 }
 
 .roomops-sidebar {
+  /* Variables de CoreUI enlazadas con la paleta global de RoomOps. */
   --cui-sidebar-bg: var(--roomops-surface);
   --cui-sidebar-color: var(--roomops-text-muted);
   --cui-sidebar-brand-color: var(--roomops-text);
@@ -11,9 +12,30 @@
   --cui-sidebar-nav-link-hover-bg: var(--roomops-accent-soft);
   --cui-sidebar-nav-link-hover-color: var(--roomops-text);
   background:
-    linear-gradient(180deg, rgba(47, 61, 85, 0.96) 0%, rgba(32, 53, 77, 0.98) 52%, rgba(21, 34, 50, 1) 100%) !important;
+    linear-gradient(180deg, rgba(30, 83, 110, 0.96) 0%, rgba(26, 51, 74, 0.98) 58%, rgba(26, 51, 74, 1) 100%) !important;
   border-right: 1px solid var(--roomops-border) !important;
   color: var(--roomops-text-muted);
+}
+
+.app-shell .roomops-sidebar {
+  /* Mantiene el sidebar dentro del flujo horizontal y evita superposicion sobre el main. */
+  position: sticky !important;
+  top: 0;
+  left: auto !important;
+  align-self: flex-start;
+  flex: 0 0 auto;
+  height: 100vh;
+  z-index: 20;
+}
+
+.app-shell.sidebar-narrow .roomops-sidebar {
+  /* Ancho cuando esta colapsado. */
+  width: 4rem !important;
+}
+
+.app-shell.sidebar-expanded .roomops-sidebar {
+  /* Ancho cuando esta expandido. */
+  width: 16rem !important;
 }
 
 .roomops-sidebar .sidebar-header,
@@ -38,30 +60,30 @@
 
 .roomops-sidebar .sidebar-nav .nav-link .nav-icon,
 .roomops-sidebar .sidebar-nav .nav-link svg {
-  color: #A4A4B7;
+  color: var(--roomops-text-muted);
   transition: color 0.2s ease;
 }
 
 .roomops-sidebar .sidebar-nav .nav-link.active,
 .roomops-sidebar .sidebar-nav .nav-link:focus-visible {
-  background-color: rgba(164, 164, 183, 0.28);
-  color: #D38690;
+  background-color: rgba(90, 165, 205, 0.32);
+  color: var(--roomops-accent);
 }
 
 .roomops-sidebar .sidebar-nav .nav-link.active .nav-icon,
 .roomops-sidebar .sidebar-nav .nav-link.active svg,
 .roomops-sidebar .sidebar-nav .nav-link:focus-visible .nav-icon,
 .roomops-sidebar .sidebar-nav .nav-link:focus-visible svg {
-  color: #D38690;
+  color: var(--roomops-accent);
 }
 
 .roomops-sidebar .sidebar-nav .nav-link:hover {
-  background-color: #D38690;
-  color: #F8F4FA;
-  box-shadow: 0 0 0 3px rgba(211, 134, 144, 0.45), 0 0 12px rgba(211, 134, 144, 0.35);
+  background-color: var(--roomops-accent);
+  color: #052937;
+  box-shadow: 0 0 0 3px rgba(39, 230, 236, 0.38), 0 0 12px rgba(39, 230, 236, 0.32);
 }
 
 .roomops-sidebar .sidebar-nav .nav-link:hover .nav-icon,
 .roomops-sidebar .sidebar-nav .nav-link:hover svg {
-  color: #F8F4FA;
+  color: #052937;
 }

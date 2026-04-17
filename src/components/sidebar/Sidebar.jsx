@@ -1,20 +1,35 @@
 import React, { useState } from 'react'
+import { NavLink } from 'react-router-dom'
 import { CButton, CSidebar, CSidebarBrand, CSidebarFooter, CSidebarHeader, CSidebarNav, CNavItem, CNavTitle } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilAccountLogout, cilSpeedometer } from '@coreui/icons'
+import { cilAccountLogout, cilSpeedometer, cilUser } from '@coreui/icons'
 import modelo1Logo from '../../assets/icons/modelo 1.svg'
 import modelo2Logo from '../../assets/icons/modelo 2.svg'
 import './sidebar.css'
 
 
-export const SidebarUnfoldableExample = () => {
-  const [narrow, setNarrow] = useState(true)
+export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onNarrowChange }) {
+  // Estado local por si este componente se usa sin un layout controlador.
+  const [internalNarrow, setInternalNarrow] = useState(true)
+  // Si llega una prop externa, sera la fuente de verdad; si no, se usa estado interno.
+  const narrow = controlledNarrow ?? internalNarrow
+
+  const setNarrow = (value) => {
+    // Notifica al padre para sincronizar el ancho con el resto del layout.
+    onNarrowChange?.(value)
+
+    if (controlledNarrow === undefined) {
+      // Solo actualiza estado local cuando opera en modo no controlado.
+      setInternalNarrow(value)
+    }
+  }
 
   return (
     <CSidebar
       className="roomops-sidebar border-end vh-100 d-flex flex-column"
       narrow={narrow}
       unfoldable
+      // Se expande al hover y se colapsa al salir para aprovechar mejor el espacio.
       onMouseEnter={() => setNarrow(false)}
       onMouseLeave={() => setNarrow(true)}
     >
@@ -27,17 +42,17 @@ export const SidebarUnfoldableExample = () => {
 
       <CSidebarNav className="flex-grow-1">
         <CNavTitle>Menu</CNavTitle>
-        <CNavItem href="#">
-          <CIcon customClassName="nav-icon" icon={cilSpeedometer} /> Dashboard
+
+        <CNavItem>
+          <NavLink to="/" className="nav-link">
+            <CIcon customClassName="nav-icon" icon={cilSpeedometer} /> Dashboard
+          </NavLink>
         </CNavItem>
-        <CNavItem href="#">
-          <CIcon customClassName="nav-icon" icon={cilSpeedometer} /> Tablero
-        </CNavItem>
-        <CNavItem href="#">
-          <CIcon customClassName="nav-icon" icon={cilSpeedometer} /> Usuarios
-        </CNavItem>
-        <CNavItem href="#">
-          <CIcon customClassName="nav-icon" icon={cilSpeedometer} /> Departamentos
+
+        <CNavItem>
+          <NavLink to="/users" className="nav-link">
+            <CIcon customClassName="nav-icon" icon={cilUser} /> Usuarios
+          </NavLink>
         </CNavItem>
       </CSidebarNav>
 
