@@ -1,7 +1,8 @@
 // Archivo principal de rutas.
 import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import Sidebar from './components/sidebar/Sidebar.jsx'
 import Users from './components/users/Users.jsx'
 import Login from './components/login/Login.jsx'
@@ -63,6 +64,8 @@ function RequireGuest({ children }) {
 function App() {
   return (
     <Router>
+      <ToastContainer />
+
       <Routes>
         <Route
           path="/login"
