@@ -15,16 +15,12 @@ import {
   CTableDataCell,
   CBadge,
   CAvatar,
-  CDropdown,
-  CDropdownToggle,
-  CDropdownMenu,
-  CDropdownItem,
   CPagination,
   CPaginationItem,
   CFormCheck
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilSearch, cilFilter, cilOptions, cilPlus } from '@coreui/icons'
+import { cilSearch, cilFilter, cilPlus, cilPencil, cilSwapHorizontal, cilBan } from '@coreui/icons'
 import './users.css'
 
 // Datos de prueba (Luego seran reemplazados con los de la API Spring Boot).
@@ -39,7 +35,7 @@ export default function Users() {
 
   // Define el color de la etiqueta segun el estado.
   const getBadgeColor = (status) => {
-    return status === 'Activo' ? 'success' : 'secondary'
+    return status === 'Activo' ? 'success' : 'danger'
   }
 
   return (
@@ -118,18 +114,36 @@ export default function Users() {
                     </CBadge>
                   </CTableDataCell>
 
-                  {/* Columna de acciones (menu de tres puntos). */}
+                  {/* Columna de acciones. */}
                   <CTableDataCell>
-                    <CDropdown variant="btn-group">
-                      <CDropdownToggle color="transparent" caret={false} className="p-0 border-0 shadow-none">
-                        <CIcon icon={cilOptions} size="lg" className="text-secondary" />
-                      </CDropdownToggle>
-                      <CDropdownMenu>
-                        <CDropdownItem href="#">Editar Perfil</CDropdownItem>
-                        <CDropdownItem href="#">Cambiar Rol</CDropdownItem>
-                        <CDropdownItem href="#" className="text-danger">Desactivar Usuario</CDropdownItem>
-                      </CDropdownMenu>
-                    </CDropdown>
+                    <div className="users-actions d-flex justify-content-center gap-2">
+                      <CButton
+                        color="info"
+                        variant="outline"
+                        className="users-action-btn"
+                        title="Editar perfil"
+                        aria-label={`Editar perfil de ${user.name}`}
+                      >
+                        <CIcon icon={cilPencil} size="sm" />
+                      </CButton>
+                      <CButton
+                        color="warning"
+                        variant="outline"
+                        className="users-action-btn"
+                        title="Cambiar rol"
+                        aria-label={`Cambiar rol de ${user.name}`}
+                      >
+                        <CIcon icon={cilSwapHorizontal} size="sm" />
+                      </CButton>
+                      <CButton
+                        color="danger"
+                        className="users-action-btn users-action-btn-danger"
+                        title="Desactivar usuario"
+                        aria-label={`Desactivar usuario ${user.name}`}
+                      >
+                        <CIcon icon={cilBan} size="sm" />
+                      </CButton>
+                    </div>
                   </CTableDataCell>
                 </CTableRow>
               ))}

@@ -47,6 +47,37 @@
   gap: 0.75rem;
 }
 
+.users-actions {
+  min-width: 132px;
+}
+
+.users-action-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.users-action-btn:hover,
+.users-action-btn:focus {
+  border-color: #b9c4cf;
+  background-color: #f3f6f9;
+  color: #22313f;
+}
+
+.users-action-btn-danger {
+  color: #ffffff;
+}
+
+.users-action-btn-danger:hover,
+.users-action-btn-danger:focus {
+  border-color: #e6a39b;
+  background-color: #fdf1ef;
+  color: #a52922;
+}
+
 @media (max-width: 992px) {
   /* En movil, toolbar y footer pasan a columna para evitar cortes horizontales. */
   .users-toolbar {
@@ -65,5 +96,9 @@
   .users-footer {
     flex-direction: column;
     align-items: flex-start !important;
+  }
+
+  .users-actions {
+    min-width: 0;
   }
 }
