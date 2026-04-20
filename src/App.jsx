@@ -1,9 +1,11 @@
 // Archivo principal de rutas.
 import { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link, Outlet } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 
 import Sidebar from './components/sidebar/Sidebar.jsx'
 import Users from './components/users/Users.jsx'
+import Login from './components/login/Login.jsx'
+import { isUserLoggedIn } from './service/localStorage'
 import './App.css'
 
 function Layout() {
@@ -42,14 +44,48 @@ function Home() {
   )
 }
 
+function RequireAuth({ children }) {
+  if (!isUserLoggedIn()) {
+    return <Navigate to="/login" replace />
+  }
+
+  return children
+}
+
+function RequireGuest({ children }) {
+  if (isUserLoggedIn()) {
+    return <Navigate to="/" replace />
+  }
+
+  return children
+}
+
 function App() {
   return (
     <Router>
       <Routes>
-        <Route element={<Layout />}>
+        <Route
+          path="/login"
+          element={(
+            <RequireGuest>
+              <Login />
+            </RequireGuest>
+          )}
+        />
+
+        <Route
+          element={(
+            <RequireAuth>
+              <Layout />
+            </RequireAuth>
+          )}
+        >
           <Route path="/" element={<Home />} />
+          <Route path="/home" element={<Home />} />
           <Route path='/users' element={<Users />} />
         </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   )

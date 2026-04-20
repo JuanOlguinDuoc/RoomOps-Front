@@ -5,6 +5,8 @@ import CIcon from '@coreui/icons-react'
 import { cilAccountLogout, cilSpeedometer, cilUser } from '@coreui/icons'
 import modelo1Logo from '../../assets/icons/modelo 1.svg'
 import modelo2Logo from '../../assets/icons/modelo 2.svg'
+import { setAuthToken } from '../../service/api'
+import { clearUserSession } from '../../service/localStorage'
 import './sidebar.css'
 
 
@@ -22,6 +24,12 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
       // Solo actualiza estado local cuando opera en modo no controlado.
       setInternalNarrow(value)
     }
+  }
+
+  const handleLogout = () => {
+    setAuthToken(null)
+    clearUserSession()
+    window.location.href = '/login'
   }
 
   return (
@@ -60,6 +68,7 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
         <CButton
           color="danger"
           className={`d-flex align-items-center ${narrow ? 'justify-content-center' : 'justify-content-start w-100'}`}
+          onClick={handleLogout}
         >
           <CIcon size="lg" icon={cilAccountLogout} />
           {!narrow && <span className="ms-2">Cerrar Sesión</span>}
