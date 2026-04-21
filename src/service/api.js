@@ -2,7 +2,7 @@ import axios from 'axios';
 import { clearUserSession } from './localStorage';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://roomops.netlify.app',
+  baseURL: import.meta.env.VITE_API_URL || 'https://gleaming-healing-production-bd23.up.railway.app',
   headers: {
     'Content-Type': 'application/json',
   }
