@@ -45,25 +45,25 @@ export default function Login() {
             const data = resp.data || {};
             const token = data.token;
 
-                        if (token) {
-                                // guardar token y configurar instancia api
-                                setAuthToken(token);
-                                // establecer sesión mínima inmediatamente para actualizar UI (Navbar, Checkout)
-                                try {
-                                    setUserSession({ email: data.email || email, name: data.name || data.firstName || '' });
-                                } catch (e) { /* noop */ }
-                                // intentar obtener perfil completo del usuario desde backend y reemplazar la sesión
-                                try {
-                                    const respUser = await api.get('/api/v1/users/by-email', {
-                                        params: { email: data.email || email }
-                                    });
-                                    if (respUser?.data) {
-                                        setUserSession(respUser.data);
-                                    }
-                                } catch (err) {
-                                    // si falla, ya tenemos una sesión mínima
-                                }
-                                localStorage.setItem('email', data.email || email);
+            if (token) {
+                // guardar token y configurar instancia api
+                setAuthToken(token);
+                // establecer sesión mínima inmediatamente para actualizar UI (Navbar, Checkout)
+                try {
+                    setUserSession({ email: data.email || email, name: data.name || data.firstName || '' });
+                } catch (e) { /* noop */ }
+                // intentar obtener perfil completo del usuario desde backend y reemplazar la sesión
+                try {
+                    const respUser = await api.get('/api/v1/users/by-email', {
+                        params: { email: data.email || email }
+                    });
+                    if (respUser?.data) {
+                        setUserSession(respUser.data);
+                    }
+                } catch (err) {
+                    // si falla, ya tenemos una sesión mínima
+                }
+                localStorage.setItem('email', data.email || email);
 
                 showSuccessToast(data.message || 'Inicio de sesión exitoso');
                 navigate(redirectTo);
@@ -71,8 +71,18 @@ export default function Login() {
                 showErrorToast(data.message || 'Credenciales inválidas');
             }
         } catch (err) {
-            const msg = err.response?.data?.message || 'Error de red al intentar iniciar sesión';
-            showErrorToast(msg);
+            // Manejar diferentes tipos de error
+            if (err.response) {
+                // Error del servidor (4xx, 5xx)
+                const msg = err.response?.data?.message || 'Credenciales inválidas';
+                showErrorToast(msg);
+            } else if (err.request) {
+                // Error de red
+                showErrorToast('Error de conexión. Verifica tu conexión a internet.');
+            } else {
+                // Otro tipo de error
+                showErrorToast('Error inesperado. Inténtalo de nuevo.');
+            }
         } finally {
             setLoading(false);
         }

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { clearUserSession } from './localStorage';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_URL || 'https://roomops.netlify.app',
   headers: {
     'Content-Type': 'application/json',
   }
@@ -28,9 +28,12 @@ api.interceptors.response.use(
   res => res,
   err => {
     if (err.response && err.response.status === 401) {
-      setAuthToken(null);
-      clearUserSession();
-      window.location.href = '/login';
+      // Solo limpiar sesión en el interceptor si NO estamos en la página de login
+      if (!window.location.pathname.includes('/login')) {
+        setAuthToken(null);
+        clearUserSession();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }
