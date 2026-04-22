@@ -6,10 +6,14 @@ import { cilAccountLogout, cilSpeedometer, cilUser } from '@coreui/icons'
 import modelo1Logo from '../../assets/icons/modelo 1.svg'
 import modelo2Logo from '../../assets/icons/modelo 2.svg'
 import { confirmLogout } from '../../utils/alert'
+import { isUserAdmin, isUserSupervisor } from '../../service/localStorage'
 import './sidebar.css'
 
 
 export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onNarrowChange }) {
+  // Solo admins y supervisores pueden ver la gestión de usuarios.
+  const canViewUsers = isUserAdmin() || isUserSupervisor()
+
   // Estado local por si este componente se usa sin un layout controlador.
   const [internalNarrow, setInternalNarrow] = useState(true)
   // Si llega una prop externa, sera la fuente de verdad; si no, se usa estado interno.
@@ -56,11 +60,13 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
           </NavLink>
         </CNavItem>
 
-        <CNavItem>
-          <NavLink to="/users" className="nav-link">
-            <CIcon customClassName="nav-icon" icon={cilUser} /> Usuarios
-          </NavLink>
-        </CNavItem>
+        {canViewUsers && (
+          <CNavItem>
+            <NavLink to="/users" className="nav-link">
+              <CIcon customClassName="nav-icon" icon={cilUser} /> Usuarios
+            </NavLink>
+          </CNavItem>
+        )}
       </CSidebarNav>
 
       <CSidebarFooter className={`border-top p-3 mt-auto d-flex ${narrow ? 'justify-content-center' : ''}`}>

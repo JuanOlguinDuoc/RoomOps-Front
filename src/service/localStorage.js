@@ -170,7 +170,7 @@ export const isUserAdmin = () => {
 // Función para verificar si el usuario es supervisor
 export const isUserSupervisor = () => {
   const role = getUserRole();
-  return role === 'supervisor';
+  return role?.toUpperCase() === 'SUPERVISOR';
 };
 
 // Función para verificar si el usuario es trabajador

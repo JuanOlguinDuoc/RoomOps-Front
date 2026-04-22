@@ -63,10 +63,16 @@ export default function Login() {
                         params: { email: data.email || email }
                     });
                     if (respUser?.data) {
+                        // Verificar si el usuario está activo antes de permitir el acceso
+                        if (respUser.data.activo === false) {
+                            setAuthToken(null);
+                            showErrorToast('Tu cuenta está desactivada. Contacta al administrador.');
+                            return;
+                        }
                         setUserSession(respUser.data);
                     }
                 } catch (err) {
-                    // si falla, ya tenemos una sesión mínima
+                    // si falla, ya tenemos una sesión mínima (no bloqueamos por error de red)
                 }
                 localStorage.setItem('email', data.email || email);
 

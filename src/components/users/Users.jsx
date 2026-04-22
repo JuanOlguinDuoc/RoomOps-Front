@@ -28,23 +28,23 @@ import { confirmAction } from '../../utils/alert'
 import { showErrorToast, showSuccessToast } from '../../utils/toast'
 import {
   getAllUsers, createUserAdmin, updateUserAdmin,
-  isUserLoggedIn, isUserAdmin
+  isUserLoggedIn, isUserAdmin, isUserSupervisor
 } from '../../service/localStorage'
 import { getUsers, createUser, updateUser, updateUserEstado } from '../../service/userService'
 
 export default function Users() {
-  // Control de acceso: solo usuarios autenticados y con rol administrador.
+  // Control de acceso: solo usuarios autenticados con rol admin o supervisor.
   const isLoggedIn = isUserLoggedIn()
   const isAdmin = isUserAdmin()
+  const canAccess = isAdmin || isUserSupervisor()
 
   // Si no está logueado, redirigir al login
   if (!isLoggedIn) {
     return <Navigate to="/login?redirect=/users" replace />
   }
 
-  // Si está logueado pero no es admin, mostrar error y redirigir
-  if (!isAdmin) {
-    showErrorToast('No tienes permisos para acceder a esta página')
+  // Si está logueado pero no tiene permisos, redirigir sin toast durante render
+  if (!canAccess) {
     return <Navigate to="/" replace />
   }
 
@@ -315,13 +315,15 @@ export default function Users() {
         {/* Encabezado principal. */}
         <CCardHeader className="bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
           <h4 className="mb-0 fw-bold">Gestión de Usuarios</h4>
-          <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
-            <CIcon icon={cilPlus} /> Añadir usuario
-          </CButton>
+          {isAdmin && (
+            <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
+              <CIcon icon={cilPlus} /> Añadir usuario
+            </CButton>
+          )}
         </CCardHeader>
 
         <CCardBody>
-          {showForm && editingUser && (
+          {isAdmin && showForm && editingUser && (
             <form className="mb-3" onSubmit={handleSaveUser}>
               {/* Formulario de alta/edición reutilizando la misma estructura de datos. */}
               <div className="row g-2">
@@ -411,7 +413,7 @@ export default function Users() {
                 <CTableHeaderCell className="text-start">Usuario</CTableHeaderCell>
                 <CTableHeaderCell>Rol</CTableHeaderCell>
                 <CTableHeaderCell>Estado</CTableHeaderCell>
-                <CTableHeaderCell>Acciones</CTableHeaderCell>
+                {isAdmin && <CTableHeaderCell>Acciones</CTableHeaderCell>}
               </CTableRow>
             </CTableHead>
             <CTableBody>
@@ -446,6 +448,7 @@ export default function Users() {
                     </CTableDataCell>
 
                     {/* Columna de acciones. */}
+                    {isAdmin && (
                     <CTableDataCell>
                       <div className="users-actions d-flex justify-content-center gap-2">
                         <CButton
@@ -490,6 +493,7 @@ export default function Users() {
                         </CButton>
                       </div>
                     </CTableDataCell>
+                    )}
                   </CTableRow>
                 ))}
             </CTableBody>
