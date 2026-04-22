@@ -21,6 +21,7 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilSearch, cilFilter, cilPlus, cilPencil, cilSwapHorizontal, cilCheckCircle, cilBan } from '@coreui/icons'
+import Swal from 'sweetalert2'
 import './users.css'
 import { Navigate } from 'react-router-dom'
 import { confirmAction } from '../../utils/alert'
@@ -88,6 +89,12 @@ export default function Users() {
     }
   }
 
+  const formatRun = (value = '') => {
+    const cleaned = String(value).replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9)
+    if (cleaned.length <= 1) return cleaned
+    return `${cleaned.slice(0, -1)}-${cleaned.slice(-1)}`
+  }
+
   const resetForm = () => {
     setNuevoUser({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
     setEditingUser(null)
@@ -95,15 +102,88 @@ export default function Users() {
   }
 
   const handleStartCreate = () => {
-    setEditingUser(null)
-    setNuevoUser({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
-    setShowForm(true)
+    void openCreateUserModal()
+  }
+
+  const openCreateUserModal = async () => {
+    const result = await Swal.fire({
+      title: 'Crear usuario',
+      html: `
+        <div class="users-create-modal-form">
+          <input id="swal-run" class="users-create-input" placeholder="RUN" maxlength="10" />
+          <input id="swal-firstName" class="users-create-input" placeholder="Nombre" />
+          <input id="swal-lastName" class="users-create-input" placeholder="Apellido" />
+          <input id="swal-email" class="users-create-input" placeholder="Correo" type="email" />
+          <input id="swal-password" class="users-create-input" placeholder="Password" type="password" />
+          <select id="swal-role" class="users-create-input users-create-select">
+            <option value="">Selecciona un rol</option>
+            <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+            <option value="SUPERVISOR">SUPERVISOR</option>
+            <option value="TRABAJADOR">TRABAJADOR</option>
+          </select>
+        </div>
+      `,
+      width: 560,
+      focusConfirm: false,
+      showCancelButton: true,
+      buttonsStyling: false,
+      confirmButtonText: 'Crear usuario',
+      cancelButtonText: 'Cancelar',
+      customClass: {
+        popup: 'users-create-modal-popup',
+        title: 'users-create-modal-title',
+        htmlContainer: 'users-create-modal-content',
+        confirmButton: 'users-create-modal-confirm',
+        cancelButton: 'users-create-modal-cancel'
+      },
+      didOpen: () => {
+        const runInput = document.getElementById('swal-run')
+        if (runInput) {
+          runInput.addEventListener('input', (event) => {
+            event.target.value = formatRun(event.target.value)
+          })
+        }
+      },
+      preConfirm: () => {
+        const run = formatRun(document.getElementById('swal-run')?.value?.trim() || '')
+        const firstName = document.getElementById('swal-firstName')?.value?.trim() || ''
+        const lastName = document.getElementById('swal-lastName')?.value?.trim() || ''
+        const email = document.getElementById('swal-email')?.value?.trim() || ''
+        const password = document.getElementById('swal-password')?.value || ''
+        const role = document.getElementById('swal-role')?.value || ''
+
+        if (!firstName || !lastName || !email || !password || !role) {
+          Swal.showValidationMessage('Completa nombre, apellido, correo, password y rol')
+          return false
+        }
+
+        return { run, firstName, lastName, email, password, role }
+      }
+    })
+
+    if (!result.isConfirmed || !result.value) return
+
+    try {
+      try {
+        await createUser(result.value)
+      } catch (err) {
+        // Fallback local por si no hay backend disponible.
+        createUserAdmin(result.value)
+      }
+
+      showSuccessToast('Usuario creado')
+      await refreshAll()
+    } catch (err) {
+      console.error('Error creating user', err)
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error creando usuario'
+      showErrorToast(msg)
+    }
   }
 
   const handleStartEditUser = (user) => {
     // Cargamos datos al formulario con compatibilidad de nombres antiguos/nuevos.
     setNuevoUser({
-      run: user.run || '',
+      run: formatRun(user.run || ''),
       firstName: user.firstName || user.nombre || '',
       lastName: user.lastName || user.apellidos || '',
       email: user.email || '',
@@ -241,7 +321,7 @@ export default function Users() {
         </CCardHeader>
 
         <CCardBody>
-          {showForm && (
+          {showForm && editingUser && (
             <form className="mb-3" onSubmit={handleSaveUser}>
               {/* Formulario de alta/edición reutilizando la misma estructura de datos. */}
               <div className="row g-2">
@@ -249,7 +329,7 @@ export default function Users() {
                   <CFormInput
                     placeholder="RUN"
                     value={nuevoUser.run}
-                    onChange={(e) => setNuevoUser({ ...nuevoUser, run: e.target.value })}
+                    onChange={(e) => setNuevoUser({ ...nuevoUser, run: formatRun(e.target.value) })}
                   />
                 </div>
                 <div className="col-md-2">
@@ -293,7 +373,7 @@ export default function Users() {
 
               <div className="d-flex gap-2 mt-2">
                 <CButton type="submit" color="primary" disabled={saving}>
-                  {saving ? 'Guardando...' : (editingUser ? 'Actualizar usuario' : 'Crear usuario')}
+                  {saving ? 'Guardando...' : 'Actualizar usuario'}
                 </CButton>
                 <CButton type="button" color="secondary" variant="outline" onClick={resetForm}>
                   Cancelar
