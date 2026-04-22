@@ -46,6 +46,11 @@ export default function Login() {
             const token = data.token;
 
             if (token) {
+                // Limpiar datos mockeados del localStorage antes de guardar datos reales del backend
+                localStorage.removeItem('roles');
+                localStorage.removeItem('registeredUsers');
+                localStorage.removeItem('nextUserId');
+                
                 // guardar token y configurar instancia api
                 setAuthToken(token);
                 // establecer sesión mínima inmediatamente para actualizar UI (Navbar, Checkout)

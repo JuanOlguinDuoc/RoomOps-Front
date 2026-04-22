@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CCard,
   CCardHeader,
@@ -20,18 +20,209 @@ import {
   CFormCheck
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilSearch, cilFilter, cilPlus, cilPencil, cilSwapHorizontal, cilBan } from '@coreui/icons'
+import { cilSearch, cilFilter, cilPlus, cilPencil, cilSwapHorizontal, cilCheckCircle, cilBan } from '@coreui/icons'
 import './users.css'
-
-// Datos de prueba (Luego seran reemplazados con los de la API Spring Boot).
-const mockUsers = [
-  { id: 1, name: 'Kenzi Lawson', email: 'kenzi.lawson@example.com', role: 'Administrador', status: 'Activo', avatar: 'https://i.pravatar.cc/150?u=1' },
-  { id: 2, name: 'Michael Silas', email: 'michael.silas@example.com', role: 'Trabajador', status: 'Inactivo', avatar: 'https://i.pravatar.cc/150?u=2' },
-  { id: 3, name: 'Amira Talley', email: 'amira.talley@example.com', role: 'Supervisor', status: 'Activo', avatar: 'https://i.pravatar.cc/150?u=3' },
-]
+import { Navigate } from 'react-router-dom'
+import { confirmAction } from '../../utils/alert'
+import { showErrorToast, showSuccessToast } from '../../utils/toast'
+import {
+  getAllUsers, createUserAdmin, updateUserAdmin,
+  isUserLoggedIn, isUserAdmin
+} from '../../service/localStorage'
+import { getUsers, createUser, updateUser, updateUserEstado } from '../../service/userService'
 
 export default function Users() {
+  // Control de acceso: solo usuarios autenticados y con rol administrador.
+  const isLoggedIn = isUserLoggedIn()
+  const isAdmin = isUserAdmin()
+
+  // Si no está logueado, redirigir al login
+  if (!isLoggedIn) {
+    return <Navigate to="/login?redirect=/users" replace />
+  }
+
+  // Si está logueado pero no es admin, mostrar error y redirigir
+  if (!isAdmin) {
+    showErrorToast('No tienes permisos para acceder a esta página')
+    return <Navigate to="/" replace />
+  }
+
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
+  const [showForm, setShowForm] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+
+  // El formulario usa la forma del backend (run, firstName, lastName, email, password, role).
+  const [nuevoUser, setNuevoUser] = useState({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
+
+  // Cargar usuarios al montar la vista.
+  useEffect(() => {
+    refreshAll()
+  }, [])
+
+  const filteredUsers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    if (!term) return users
+
+    return users.filter((user) => {
+      const name = `${user.firstName || user.nombre || ''} ${user.lastName || user.apellidos || ''}`.trim().toLowerCase()
+      const email = (user.email || '').toLowerCase()
+      const run = (user.run || '').toLowerCase()
+      return name.includes(term) || email.includes(term) || run.includes(term)
+    })
+  }, [users, searchTerm])
+
+  const refreshAll = async () => {
+    setLoading(true)
+    // Estrategia híbrida: primero intentamos backend, si falla usamos localStorage.
+    try {
+      const usersFromApi = await getUsers()
+      setUsers(Array.isArray(usersFromApi) ? usersFromApi : [])
+    } catch (err) {
+      console.error('Error fetching users from API, falling back to localStorage', err)
+      setUsers(getAllUsers())
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setNuevoUser({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
+    setEditingUser(null)
+    setShowForm(false)
+  }
+
+  const handleStartCreate = () => {
+    setEditingUser(null)
+    setNuevoUser({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
+    setShowForm(true)
+  }
+
+  const handleStartEditUser = (user) => {
+    // Cargamos datos al formulario con compatibilidad de nombres antiguos/nuevos.
+    setNuevoUser({
+      run: user.run || '',
+      firstName: user.firstName || user.nombre || '',
+      lastName: user.lastName || user.apellidos || '',
+      email: user.email || '',
+      password: '',
+      role: typeof user.role === 'object' ? (user.role?.name || '') : (user.role || '')
+    })
+    setEditingUser(user.id || user._id || user.email)
+    setShowForm(true)
+  }
+
+  const handleSaveUser = async (e) => {
+    e.preventDefault()
+
+    // Validaciones mínimas para evitar enviar formularios vacíos.
+    if (!nuevoUser.firstName || !nuevoUser.lastName || !nuevoUser.email || !nuevoUser.role) {
+      showErrorToast('Completa nombre, apellido, correo y rol')
+      return
+    }
+
+    if (!editingUser && !nuevoUser.password) {
+      showErrorToast('La contraseña es obligatoria para crear un usuario')
+      return
+    }
+
+    setSaving(true)
+    try {
+      if (editingUser) {
+        const payload = { ...nuevoUser }
+        if (!payload.password) delete payload.password
+
+        try {
+          await updateUser(editingUser, payload)
+        } catch (err) {
+          // Fallback local por si no hay backend disponible.
+          updateUserAdmin(editingUser, payload)
+        }
+
+        showSuccessToast('Usuario actualizado')
+      } else {
+        try {
+          await createUser(nuevoUser)
+        } catch (err) {
+          // Fallback local por si no hay backend disponible.
+          createUserAdmin(nuevoUser)
+        }
+
+        showSuccessToast('Usuario creado')
+      }
+
+      resetForm()
+      await refreshAll()
+    } catch (err) {
+      console.error('Error creating/updating user', err)
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error creando/actualizando usuario'
+      showErrorToast(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleToggleUserStatus = (user, forceActivo = null) => {
+    const id = user.id || user._id || user.email
+    const name = `${user.firstName || user.nombre || ''} ${user.lastName || user.apellidos || ''}`.trim() || user.email || 'este usuario'
+    const isCurrentlyActive = resolveUserStatus(user) === 'Activo'
+    const nextActivo = typeof forceActivo === 'boolean' ? forceActivo : !isCurrentlyActive
+    const actionLabel = nextActivo ? 'activar' : 'desactivar'
+    const actionLabelCap = nextActivo ? 'Activar' : 'Desactivar'
+
+    confirmAction({
+      title: `${actionLabelCap} usuario`,
+      text: `¿${actionLabelCap} a ${name}?`,
+      confirmText: actionLabelCap
+    }).then(async (ok) => {
+      if (!ok) return
+
+      try {
+        try {
+          // Endpoint oficial del backend para cambiar estado del usuario.
+          await updateUserEstado(id, nextActivo)
+        } catch (err) {
+          // Si el backend falla (403, 500, etc), mostrar el error específico y luego el fallback local.
+          console.error(`Backend error ${actionLabel} user:`, err?.response?.status, err?.response?.data)
+
+          // Si es 403, significa que no tiene permisos en el backend: mostrar el error específico.
+          if (err?.response?.status === 403) {
+            showErrorToast(`Permiso denegado (403): ${err?.response?.data?.mensaje || err?.response?.data?.error || `No tienes permisos para ${actionLabel} usuarios`}`)
+            return
+          }
+
+          // Para otros errores, usar fallback local.
+          updateUserAdmin(id, {
+            activo: nextActivo,
+            status: nextActivo ? 'Activo' : 'Inactivo',
+            estado: nextActivo ? 'Activo' : 'Inactivo'
+          })
+          showErrorToast('Se usó copia local por falla del servidor')
+        }
+
+        showSuccessToast(`Usuario ${nextActivo ? 'activado' : 'desactivado'}`)
+        await refreshAll()
+      } catch (err) {
+        console.error(`Error ${actionLabel} user`, err)
+        showErrorToast(`Error al ${actionLabel} usuario`)
+      }
+    })
+  }
+
+  // Unifica el estado sin importar si viene como activo (boolean), status o estado.
+  const resolveUserStatus = (user) => {
+    if (typeof user?.activo === 'boolean') {
+      return user.activo ? 'Activo' : 'Inactivo'
+    }
+
+    const backendStatus = user?.status || user?.estado
+    if (!backendStatus) return 'Activo'
+
+    const normalized = String(backendStatus).toLowerCase()
+    return normalized === 'activo' ? 'Activo' : 'Inactivo'
+  }
 
   // Define el color de la etiqueta segun el estado.
   const getBadgeColor = (status) => {
@@ -44,20 +235,81 @@ export default function Users() {
         {/* Encabezado principal. */}
         <CCardHeader className="bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
           <h4 className="mb-0 fw-bold">Gestión de Usuarios</h4>
-          <CButton color="dark" className="d-flex align-items-center gap-2">
+          <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
             <CIcon icon={cilPlus} /> Añadir usuario
           </CButton>
         </CCardHeader>
 
         <CCardBody>
+          {showForm && (
+            <form className="mb-3" onSubmit={handleSaveUser}>
+              {/* Formulario de alta/edición reutilizando la misma estructura de datos. */}
+              <div className="row g-2">
+                <div className="col-md-2">
+                  <CFormInput
+                    placeholder="RUN"
+                    value={nuevoUser.run}
+                    onChange={(e) => setNuevoUser({ ...nuevoUser, run: e.target.value })}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <CFormInput
+                    placeholder="Nombre"
+                    value={nuevoUser.firstName}
+                    onChange={(e) => setNuevoUser({ ...nuevoUser, firstName: e.target.value })}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <CFormInput
+                    placeholder="Apellido"
+                    value={nuevoUser.lastName}
+                    onChange={(e) => setNuevoUser({ ...nuevoUser, lastName: e.target.value })}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <CFormInput
+                    type="email"
+                    placeholder="Correo"
+                    value={nuevoUser.email}
+                    onChange={(e) => setNuevoUser({ ...nuevoUser, email: e.target.value })}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <CFormInput
+                    type="password"
+                    placeholder={editingUser ? 'Password (opcional)' : 'Password'}
+                    value={nuevoUser.password}
+                    onChange={(e) => setNuevoUser({ ...nuevoUser, password: e.target.value })}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <CFormInput
+                    placeholder="Rol"
+                    value={nuevoUser.role}
+                    onChange={(e) => setNuevoUser({ ...nuevoUser, role: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="d-flex gap-2 mt-2">
+                <CButton type="submit" color="primary" disabled={saving}>
+                  {saving ? 'Guardando...' : (editingUser ? 'Actualizar usuario' : 'Crear usuario')}
+                </CButton>
+                <CButton type="button" color="secondary" variant="outline" onClick={resetForm}>
+                  Cancelar
+                </CButton>
+              </div>
+            </form>
+          )}
+
           {/* Barra de herramientas: buscador y filtros. */}
           <div className="users-toolbar d-flex justify-content-between mb-3">
             <CInputGroup className="users-search">
               <CInputGroupText className="bg-white">
                 <CIcon icon={cilSearch} />
               </CInputGroupText>
-              <CFormInput 
-                placeholder="Buscar por nombre o correo..." 
+              <CFormInput
+                placeholder="Buscar por nombre o correo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -83,77 +335,90 @@ export default function Users() {
               </CTableRow>
             </CTableHead>
             <CTableBody>
-              {mockUsers
-                .filter(user => user.name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+              {filteredUsers
                 .map((user) => (
-                <CTableRow key={user.id}>
-                  <CTableDataCell className="text-start">
-                    <CFormCheck id={`check-${user.id}`} />
-                  </CTableDataCell>
-                  
-                  {/* Columna de nombre, avatar y email. */}
-                  <CTableDataCell className="text-start">
-                    <div className="d-flex align-items-center gap-3">
-                      <CAvatar src={user.avatar} size="md" />
-                      <div>
-                        <div className="fw-semibold">{user.name}</div>
-                        <div className="small text-secondary">{user.email}</div>
+                  <CTableRow key={user.id || user._id || user.email}>
+                    <CTableDataCell className="text-start">
+                      <CFormCheck id={`check-${user.id || user._id || user.email}`} />
+                    </CTableDataCell>
+
+                    {/* Columna de nombre, avatar y email. */}
+                    <CTableDataCell className="text-start">
+                      <div className="d-flex align-items-center gap-3">
+                        <CAvatar src={user.avatar} size="md" />
+                        <div>
+                          <div className="fw-semibold">{`${user.firstName || user.nombre || ''} ${user.lastName || user.apellidos || ''}`.trim() || 'Sin nombre'}</div>
+                          <div className="small text-secondary">{user.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  </CTableDataCell>
+                    </CTableDataCell>
 
-                  {/* Columna de rol. */}
-                  <CTableDataCell>
-                    <span className="fw-medium">{user.role}</span>
-                  </CTableDataCell>
+                    {/* Columna de rol. */}
+                    <CTableDataCell>
+                      <span className="fw-medium">{typeof user.role === 'object' ? (user.role?.name || '-') : (user.role || '-')}</span>
+                    </CTableDataCell>
 
-                  {/* Columna de estado (badge). */}
-                  <CTableDataCell>
-                    <CBadge color={getBadgeColor(user.status)} shape="rounded-pill" className="px-3 py-2">
-                      {user.status}
-                    </CBadge>
-                  </CTableDataCell>
+                    {/* Columna de estado (badge). */}
+                    <CTableDataCell>
+                      <CBadge color={getBadgeColor(resolveUserStatus(user))} shape="rounded-pill" className="px-3 py-2">
+                        {resolveUserStatus(user)}
+                      </CBadge>
+                    </CTableDataCell>
 
-                  {/* Columna de acciones. */}
-                  <CTableDataCell>
-                    <div className="users-actions d-flex justify-content-center gap-2">
-                      <CButton
-                        color="info"
-                        variant="outline"
-                        className="users-action-btn"
-                        title="Editar perfil"
-                        aria-label={`Editar perfil de ${user.name}`}
-                      >
-                        <CIcon icon={cilPencil} size="sm" />
-                      </CButton>
-                      <CButton
-                        color="warning"
-                        variant="outline"
-                        className="users-action-btn"
-                        title="Cambiar rol"
-                        aria-label={`Cambiar rol de ${user.name}`}
-                      >
-                        <CIcon icon={cilSwapHorizontal} size="sm" />
-                      </CButton>
-                      <CButton
-                        color="danger"
-                        className="users-action-btn users-action-btn-danger"
-                        title="Desactivar usuario"
-                        aria-label={`Desactivar usuario ${user.name}`}
-                      >
-                        <CIcon icon={cilBan} size="sm" />
-                      </CButton>
-                    </div>
-                  </CTableDataCell>
-                </CTableRow>
-              ))}
+                    {/* Columna de acciones. */}
+                    <CTableDataCell>
+                      <div className="users-actions d-flex justify-content-center gap-2">
+                        <CButton
+                          color="info"
+                          variant="outline"
+                          className="users-action-btn"
+                          title="Editar perfil"
+                          aria-label={`Editar perfil de ${user.email || 'usuario'}`}
+                          onClick={() => handleStartEditUser(user)}
+                        >
+                          <CIcon icon={cilPencil} size="sm" />
+                        </CButton>
+                        <CButton
+                          color="warning"
+                          variant="outline"
+                          className="users-action-btn"
+                          title="Editar usuario"
+                          aria-label={`Editar usuario ${user.email || 'usuario'}`}
+                          onClick={() => handleStartEditUser(user)}
+                        >
+                          <CIcon icon={cilSwapHorizontal} size="sm" />
+                        </CButton>
+                        <CButton
+                          color="danger"
+                          className="users-action-btn users-action-btn-danger"
+                          title="Desactivar usuario"
+                          aria-label={`Desactivar usuario ${user.email || 'usuario'}`}
+                          onClick={() => handleToggleUserStatus(user, false)}
+                          style={{ display: resolveUserStatus(user) === 'Activo' ? 'inline-flex' : 'none' }}
+                        >
+                          <CIcon icon={cilBan} size="sm" />
+                        </CButton>
+                        <CButton
+                          color="success"
+                          className="users-action-btn users-action-btn-success"
+                          title="Activar usuario"
+                          aria-label={`Activar usuario ${user.email || 'usuario'}`}
+                          onClick={() => handleToggleUserStatus(user, true)}
+                          style={{ display: resolveUserStatus(user) === 'Inactivo' ? 'inline-flex' : 'none' }}
+                        >
+                          <CIcon icon={cilCheckCircle} size="sm" />
+                        </CButton>
+                      </div>
+                    </CTableDataCell>
+                  </CTableRow>
+                ))}
             </CTableBody>
           </CTable>
 
           {/* Paginacion inferior. */}
           <div className="users-footer d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
             <div className="small text-secondary">
-              Mostrando {mockUsers.length} usuarios
+              {loading ? 'Cargando usuarios...' : `Mostrando ${filteredUsers.length} usuarios`}
             </div>
             <CPagination aria-label="Page navigation" className="mb-0" style={{ cursor: 'pointer' }}>
               <CPaginationItem disabled>Anterior</CPaginationItem>

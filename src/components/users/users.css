@@ -78,6 +78,17 @@
   color: #a52922;
 }
 
+.users-action-btn-success {
+  color: #ffffff;
+}
+
+.users-action-btn-success:hover,
+.users-action-btn-success:focus {
+  border-color: #9be69b;
+  background-color: #d7f8d2;
+  color: #22a53e;
+}
+
 @media (max-width: 992px) {
   /* En movil, toolbar y footer pasan a columna para evitar cortes horizontales. */
   .users-toolbar {

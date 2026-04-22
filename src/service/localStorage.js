@@ -1,27 +1,30 @@
 
 
-if (!localStorage.getItem('roles')) {
-  localStorage.setItem('roles', JSON.stringify(['admin', 'user']));
-}
+// ⚠️ REMOVIDOS: Datos mockeados que interferían con autenticación real del backend
+// Estos se creaban automáticamente al inicio y causaban confusión entre datos locales y reales
+// Ahora solo se usan datos que vienen del backend después de login
 
-if (!localStorage.getItem('registeredUsers')) {
-  localStorage.setItem('registeredUsers', JSON.stringify([]));
-}
+// if (!localStorage.getItem('roles')) {
+//   localStorage.setItem('roles', JSON.stringify(['admin', 'user']));
+// }
 
-// Initialize a persistent incremental ID for users to avoid very large timestamp-based IDs
-if (!localStorage.getItem('nextUserId')) {
-  localStorage.setItem('nextUserId', '1');
-}
+// if (!localStorage.getItem('registeredUsers')) {
+//   localStorage.setItem('registeredUsers', JSON.stringify([]));
+// }
+
+// if (!localStorage.getItem('nextUserId')) {
+//   localStorage.setItem('nextUserId', '1');
+// }
 
 const getNextUserId = () => {
-  const current = parseInt(localStorage.getItem('nextUserId') || '1', 10);
+  const current = parseInt(localStorage.getItem('nextUserId') || '0', 10);
   const next = current + 1;
   localStorage.setItem('nextUserId', String(next));
-  return current;
+  return next;
 }
 
 // CRUD helpers for roles
-export const getAllRoles = () => JSON.parse(localStorage.getItem('roles')) || ['admin', 'user'];
+export const getAllRoles = () => JSON.parse(localStorage.getItem('roles')) || [];
 
 export const createRole = (role) => {
   const roles = getAllRoles();
@@ -107,6 +110,10 @@ export const setUserSession = (userData) => {
 export const clearUserSession = () => {
   localStorage.setItem('isLoggedIn', 'false');
   localStorage.removeItem('currentUser');
+  // Limpiar datos mockeados cuando se cierra sesión
+  localStorage.removeItem('roles');
+  localStorage.removeItem('registeredUsers');
+  localStorage.removeItem('nextUserId');
   // Notificar a la UI que la sesión cambió
   try { window.dispatchEvent(new Event('authChanged')); } catch (e) { /* noop */ }
 }
@@ -154,10 +161,10 @@ export const getUserRole = () => {
   return user.role || null;
 };
 
-// Función para verificar si el usuario es administrador
+// Función para verificar si el usuario es ADMINISTRADOR
 export const isUserAdmin = () => {
   const role = getUserRole();
-  return role === 'administrador' || role === 'admin';
+  return role === 'ADMINISTRADOR' || role === 'ADMIN';
 };
 
 // Función para verificar si el usuario es supervisor

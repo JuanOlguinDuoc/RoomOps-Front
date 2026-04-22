@@ -1,6 +1,50 @@
 import Swal from "sweetalert2";
 import { clearUserSession } from "../service/localStorage.js";
 
+// Confirmación genérica reutilizable en vistas CRUD.
+// Retorna true si el usuario confirma, false en caso contrario.
+export const confirmAction = async ({
+    title = "¿Estás seguro?",
+    text = "Esta acción no se puede deshacer",
+    confirmText = "Confirmar",
+    cancelText = "Cancelar",
+    icon = "warning"
+} = {}) => {
+    const result = await Swal.fire({
+        title,
+        text,
+        icon,
+        showCancelButton: true,
+
+        // Colores personalizados del proyecto
+        background: '#0e011b',
+        color: '#F5F5F5',
+
+        // Botones personalizados
+        confirmButtonColor: '#5459AC',
+        cancelButtonColor: '#52357B',
+
+        // Textos de botones
+        confirmButtonText: confirmText,
+        cancelButtonText: cancelText,
+
+        customClass: {
+            popup: 'dark-popup',
+            title: 'dark-title',
+            content: 'dark-content'
+        },
+
+        showClass: {
+            popup: 'animate__animated animate__fadeInDown'
+        },
+        hideClass: {
+            popup: 'animate__animated animate__fadeOutUp'
+        }
+    });
+
+    return result.isConfirmed;
+};
+
 export const confirmLogout = (navigate) => {
     Swal.fire({
         title: "¿Estás seguro que deseas cerrar sesión?",
