@@ -54,6 +54,9 @@ export default function Users() {
   const [editingUser, setEditingUser] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [selectedRole, setSelectedRole] = useState('Todos')
+  const [selectedStatus, setSelectedStatus] = useState('Todos')
 
   // El formulario usa la forma del backend (run, firstName, lastName, email, password, role).
   const [nuevoUser, setNuevoUser] = useState({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
@@ -63,17 +66,44 @@ export default function Users() {
     refreshAll()
   }, [])
 
+  const normalizeSearchText = (value = '') => {
+    return String(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+  }
+
+  const getUserSearchIndex = (user = {}) => {
+    const firstName = user.firstName || user.nombre || user.name || ''
+    const lastName = user.lastName || user.apellidos || user.apellido || ''
+    const fullName = user.fullName || `${firstName} ${lastName}`
+    const email = user.email || user.correo || ''
+    const run = user.run || user.rut || ''
+
+    return normalizeSearchText(`${firstName} ${lastName} ${fullName} ${email} ${run}`)
+  }
+
+  const resolveUserRole = (user = {}) => {
+    const roleValue = typeof user.role === 'object' ? (user.role?.name || user.role?.id || '') : (user.role || '')
+    const normalizedRole = String(roleValue).trim().toUpperCase()
+
+    if (normalizedRole === 'ADMINISTRADOR' || normalizedRole === 'ADMIN') return 'Administrador'
+    if (normalizedRole === 'SUPERVISOR') return 'Supervisor'
+    if (normalizedRole === 'TRABAJADOR' || normalizedRole === 'WORKER') return 'Trabajador'
+    return 'Sin rol'
+  }
+
   const filteredUsers = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase()
-    if (!term) return users
+    const term = normalizeSearchText(searchTerm)
 
     return users.filter((user) => {
-      const name = `${user.firstName || user.nombre || ''} ${user.lastName || user.apellidos || ''}`.trim().toLowerCase()
-      const email = (user.email || '').toLowerCase()
-      const run = (user.run || '').toLowerCase()
-      return name.includes(term) || email.includes(term) || run.includes(term)
+      const matchesSearch = !term || getUserSearchIndex(user).includes(term)
+      const matchesRole = selectedRole === 'Todos' || resolveUserRole(user) === selectedRole
+      const matchesStatus = selectedStatus === 'Todos' || resolveUserStatus(user) === selectedStatus
+      return matchesSearch && matchesRole && matchesStatus
     })
-  }, [users, searchTerm])
+  }, [users, searchTerm, selectedRole, selectedStatus])
 
   const refreshAll = async () => {
     setLoading(true)
@@ -99,6 +129,11 @@ export default function Users() {
     setNuevoUser({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
     setEditingUser(null)
     setShowForm(false)
+  }
+
+  const clearFilters = () => {
+    setSelectedRole('Todos')
+    setSelectedStatus('Todos')
   }
 
   const handleStartCreate = () => {
@@ -181,66 +216,90 @@ export default function Users() {
   }
 
   const handleStartEditUser = (user) => {
-    // Cargamos datos al formulario con compatibilidad de nombres antiguos/nuevos.
-    setNuevoUser({
-      run: formatRun(user.run || ''),
-      firstName: user.firstName || user.nombre || '',
-      lastName: user.lastName || user.apellidos || '',
-      email: user.email || '',
-      password: '',
-      role: typeof user.role === 'object' ? (user.role?.name || '') : (user.role || '')
-    })
-    setEditingUser(user.id || user._id || user.email)
-    setShowForm(true)
+    void openEditUserModal(user)
   }
 
-  const handleSaveUser = async (e) => {
-    e.preventDefault()
+  const openEditUserModal = async (user) => {
+    const initialRun = formatRun(user.run || '')
+    const initialFirstName = user.firstName || user.nombre || ''
+    const initialLastName = user.lastName || user.apellidos || ''
+    const initialEmail = user.email || ''
+    const initialRole = typeof user.role === 'object' ? (user.role?.name || '') : (user.role || '')
+    const userId = user.id || user._id || user.email
 
-    // Validaciones mínimas para evitar enviar formularios vacíos.
-    if (!nuevoUser.firstName || !nuevoUser.lastName || !nuevoUser.email || !nuevoUser.role) {
-      showErrorToast('Completa nombre, apellido, correo y rol')
-      return
-    }
+    const result = await Swal.fire({
+      title: 'Editar usuario',
+      html: `
+        <div class="users-create-modal-form">
+          <input id="swal-run" class="users-create-input" placeholder="RUN" maxlength="10" value="${initialRun}" />
+          <input id="swal-firstName" class="users-create-input" placeholder="Nombre" value="${initialFirstName}" />
+          <input id="swal-lastName" class="users-create-input" placeholder="Apellido" value="${initialLastName}" />
+          <input id="swal-email" class="users-create-input" placeholder="Correo" type="email" value="${initialEmail}" />
+          <input id="swal-password" class="users-create-input" placeholder="Password (opcional)" type="password" />
+          <select id="swal-role" class="users-create-input users-create-select">
+            <option value="">Selecciona un rol</option>
+            <option value="ADMINISTRADOR" \${initialRole === 'ADMINISTRADOR' ? 'selected' : ''}>ADMINISTRADOR</option>
+            <option value="SUPERVISOR" \${initialRole === 'SUPERVISOR' ? 'selected' : ''}>SUPERVISOR</option>
+            <option value="TRABAJADOR" \${initialRole === 'TRABAJADOR' ? 'selected' : ''}>TRABAJADOR</option>
+          </select>
+        </div>
+      `,
+      width: 560,
+      focusConfirm: false,
+      showCancelButton: true,
+      buttonsStyling: false,
+      confirmButtonText: 'Guardar cambios',
+      cancelButtonText: 'Cancelar',
+      customClass: {
+        popup: 'users-create-modal-popup',
+        title: 'users-create-modal-title',
+        htmlContainer: 'users-create-modal-content',
+        confirmButton: 'users-create-modal-confirm',
+        cancelButton: 'users-create-modal-cancel'
+      },
+      didOpen: () => {
+        const runInput = document.getElementById('swal-run')
+        if (runInput) {
+          runInput.addEventListener('input', (event) => {
+            event.target.value = formatRun(event.target.value)
+          })
+        }
+      },
+      preConfirm: () => {
+        const run = formatRun(document.getElementById('swal-run')?.value?.trim() || '')
+        const firstName = document.getElementById('swal-firstName')?.value?.trim() || ''
+        const lastName = document.getElementById('swal-lastName')?.value?.trim() || ''
+        const email = document.getElementById('swal-email')?.value?.trim() || ''
+        const password = document.getElementById('swal-password')?.value || ''
+        const role = document.getElementById('swal-role')?.value || ''
 
-    if (!editingUser && !nuevoUser.password) {
-      showErrorToast('La contraseña es obligatoria para crear un usuario')
-      return
-    }
+        if (!firstName || !lastName || !email || !role) {
+          Swal.showValidationMessage('Completa nombre, apellido, correo y rol')
+          return false
+        }
 
-    setSaving(true)
+        return { run, firstName, lastName, email, password, role }
+      }
+    })
+
+    if (!result.isConfirmed || !result.value) return
+
+    const payload = { ...result.value }
+    if (!payload.password) delete payload.password
+
     try {
-      if (editingUser) {
-        const payload = { ...nuevoUser }
-        if (!payload.password) delete payload.password
-
-        try {
-          await updateUser(editingUser, payload)
-        } catch (err) {
-          // Fallback local por si no hay backend disponible.
-          updateUserAdmin(editingUser, payload)
-        }
-
-        showSuccessToast('Usuario actualizado')
-      } else {
-        try {
-          await createUser(nuevoUser)
-        } catch (err) {
-          // Fallback local por si no hay backend disponible.
-          createUserAdmin(nuevoUser)
-        }
-
-        showSuccessToast('Usuario creado')
+      try {
+        await updateUser(userId, payload)
+      } catch (err) {
+        updateUserAdmin(userId, payload)
       }
 
-      resetForm()
+      showSuccessToast('Usuario actualizado')
       await refreshAll()
     } catch (err) {
-      console.error('Error creating/updating user', err)
-      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error creando/actualizando usuario'
+      console.error('Error updating user', err)
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error actualizando usuario'
       showErrorToast(msg)
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -292,7 +351,7 @@ export default function Users() {
   }
 
   // Unifica el estado sin importar si viene como activo (boolean), status o estado.
-  const resolveUserStatus = (user) => {
+  function resolveUserStatus(user) {
     if (typeof user?.activo === 'boolean') {
       return user.activo ? 'Activo' : 'Inactivo'
     }
@@ -323,67 +382,6 @@ export default function Users() {
         </CCardHeader>
 
         <CCardBody>
-          {isAdmin && showForm && editingUser && (
-            <form className="mb-3" onSubmit={handleSaveUser}>
-              {/* Formulario de alta/edición reutilizando la misma estructura de datos. */}
-              <div className="row g-2">
-                <div className="col-md-2">
-                  <CFormInput
-                    placeholder="RUN"
-                    value={nuevoUser.run}
-                    onChange={(e) => setNuevoUser({ ...nuevoUser, run: formatRun(e.target.value) })}
-                  />
-                </div>
-                <div className="col-md-2">
-                  <CFormInput
-                    placeholder="Nombre"
-                    value={nuevoUser.firstName}
-                    onChange={(e) => setNuevoUser({ ...nuevoUser, firstName: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-2">
-                  <CFormInput
-                    placeholder="Apellido"
-                    value={nuevoUser.lastName}
-                    onChange={(e) => setNuevoUser({ ...nuevoUser, lastName: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-2">
-                  <CFormInput
-                    type="email"
-                    placeholder="Correo"
-                    value={nuevoUser.email}
-                    onChange={(e) => setNuevoUser({ ...nuevoUser, email: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-2">
-                  <CFormInput
-                    type="password"
-                    placeholder={editingUser ? 'Password (opcional)' : 'Password'}
-                    value={nuevoUser.password}
-                    onChange={(e) => setNuevoUser({ ...nuevoUser, password: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-2">
-                  <CFormInput
-                    placeholder="Rol"
-                    value={nuevoUser.role}
-                    onChange={(e) => setNuevoUser({ ...nuevoUser, role: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="d-flex gap-2 mt-2">
-                <CButton type="submit" color="primary" disabled={saving}>
-                  {saving ? 'Guardando...' : 'Actualizar usuario'}
-                </CButton>
-                <CButton type="button" color="secondary" variant="outline" onClick={resetForm}>
-                  Cancelar
-                </CButton>
-              </div>
-            </form>
-          )}
-
           {/* Barra de herramientas: buscador y filtros. */}
           <div className="users-toolbar d-flex justify-content-between mb-3">
             <CInputGroup className="users-search">
@@ -397,11 +395,61 @@ export default function Users() {
               />
             </CInputGroup>
             <div className="d-flex gap-2">
-              <CButton color="light" variant="outline" className="users-filter-btn text-dark border d-flex align-items-center gap-2">
+              <CButton
+                color="light"
+                variant="outline"
+                className="users-filter-btn text-dark border d-flex align-items-center gap-2"
+                onClick={() => setShowFilters((prev) => !prev)}
+              >
                 <CIcon icon={cilFilter} /> Filtros
               </CButton>
             </div>
           </div>
+
+          {showFilters && (
+            <div className="d-flex flex-wrap gap-2 mb-3">
+              <div>
+                <label htmlFor="role-filter" className="form-label mb-1">Rol</label>
+                <select
+                  id="role-filter"
+                  className="form-select"
+                  style={{ maxWidth: '220px' }}
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  aria-label="Filtrar por rol"
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="Administrador">Administrador</option>
+                  <option value="Supervisor">Supervisor</option>
+                  <option value="Trabajador">Trabajador</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="status-filter" className="form-label mb-1">Estado</label>
+                <select
+                  id="status-filter"
+                  className="form-select"
+                  style={{ maxWidth: '220px' }}
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  aria-label="Filtrar por estado"
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="Activo">Activo</option>
+                  <option value="Inactivo">Inactivo</option>
+                </select>
+              </div>
+              <div className="d-flex align-items-end">
+                <CButton
+                  color="secondary"
+                  variant="outline"
+                  onClick={clearFilters}
+                >
+                  Limpiar filtros
+                </CButton>
+              </div>
+            </div>
+          )}
 
           {/* Tabla de datos. */}
           <CTable align="middle" responsive hover className="users-table border text-center mb-0">
