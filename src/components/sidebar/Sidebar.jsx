@@ -1,12 +1,11 @@
 import React, { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { CButton, CSidebar, CSidebarBrand, CSidebarFooter, CSidebarHeader, CSidebarNav, CNavItem, CNavTitle } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilAccountLogout, cilSpeedometer, cilUser } from '@coreui/icons'
 import modelo1Logo from '../../assets/icons/modelo 1.svg'
 import modelo2Logo from '../../assets/icons/modelo 2.svg'
-import { setAuthToken } from '../../service/api'
-import { clearUserSession } from '../../service/localStorage'
+import { confirmLogout } from '../../utils/alert'
 import './sidebar.css'
 
 
@@ -15,6 +14,8 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
   const [internalNarrow, setInternalNarrow] = useState(true)
   // Si llega una prop externa, sera la fuente de verdad; si no, se usa estado interno.
   const narrow = controlledNarrow ?? internalNarrow
+
+  const navigate = useNavigate();
 
   const setNarrow = (value) => {
     // Notifica al padre para sincronizar el ancho con el resto del layout.
@@ -27,9 +28,7 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
   }
 
   const handleLogout = () => {
-    setAuthToken(null)
-    clearUserSession()
-    window.location.href = '/login'
+    confirmLogout(navigate)
   }
 
   return (
