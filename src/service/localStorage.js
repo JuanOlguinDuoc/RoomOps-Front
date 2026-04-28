@@ -263,3 +263,214 @@ export const validateLogin = (email, password) => {
 
   return { success: false, message: 'Credenciales inválidas' };
 };
+
+// =====================================================
+// APARTMENTS - CONFIGURACION LOCAL (alineada al backend)
+// =====================================================
+// Basado en roomsOps:
+// - DTO: id, nombre, piso, activo
+// - Controller: list, getById, create, update, patch parcial y patch estado
+
+const APARTMENTS_KEY = 'apartments';
+const NEXT_APARTMENT_ID_KEY = 'nextApartmentId';
+
+const getStoredApartments = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(APARTMENTS_KEY));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveStoredApartments = (apartments) => {
+  localStorage.setItem(APARTMENTS_KEY, JSON.stringify(apartments));
+};
+
+const getNextApartmentId = () => {
+  const current = parseInt(localStorage.getItem(NEXT_APARTMENT_ID_KEY) || '0', 10);
+  const next = current + 1;
+  localStorage.setItem(NEXT_APARTMENT_ID_KEY, String(next));
+  return next;
+};
+
+const normalizeApartmentDto = (dto = {}) => ({
+  id: dto?.id != null ? Number(dto.id) : null,
+  nombre: dto?.nombre || '',
+  piso: dto?.piso != null && dto?.piso !== '' ? Number(dto.piso) : null,
+  activo: typeof dto?.activo === 'boolean' ? dto.activo : true
+});
+
+// Equivalente a GET /api/v1/apartments
+export const getAllApartments = () => {
+  return getStoredApartments();
+};
+
+// Equivalente a GET /api/v1/apartments/{id}
+export const getApartmentById = (id) => {
+  const apartmentId = Number(id);
+  if (!Number.isFinite(apartmentId)) return null;
+  const apartments = getStoredApartments();
+  return apartments.find(a => Number(a.id) === apartmentId) || null;
+};
+
+// Equivalente a POST /api/v1/apartments
+// Retorna estructura similar al controller: { message, apartment }
+export const createApartmentLocal = (dto) => {
+  const apartments = getStoredApartments();
+  const normalized = normalizeApartmentDto(dto);
+
+  // Reglas del modelo (nullable = false para nombre, piso y activo)
+  if (!normalized.nombre.trim()) {
+    return { success: false, message: 'Error al crear apartamento', error: 'El nombre es obligatorio' };
+  }
+  if (!Number.isInteger(normalized.piso)) {
+    return { success: false, message: 'Error al crear apartamento', error: 'El piso es obligatorio y debe ser numerico' };
+  }
+
+  // Regla del modelo: nombre unico
+  const existsName = apartments.some(
+    a => (a.nombre || '').trim().toLowerCase() === normalized.nombre.trim().toLowerCase()
+  );
+  if (existsName) {
+    return { success: false, message: 'Error al crear apartamento', error: 'El nombre ya existe' };
+  }
+
+  const newApartment = {
+    ...normalized,
+    id: normalized.id ?? getNextApartmentId()
+  };
+
+  apartments.push(newApartment);
+  saveStoredApartments(apartments);
+
+  return { success: true, message: 'Apartamento creado correctamente', apartment: newApartment };
+};
+
+// Equivalente a PUT /api/v1/apartments/{id}
+// Actualiza nombre y activo como en ApartmentService.updateApartment
+export const updateApartmentLocal = (id, dto) => {
+  const apartmentId = Number(id);
+  if (!Number.isFinite(apartmentId)) {
+    return { success: false, message: 'Error al actualizar apartamento', error: 'ID invalido' };
+  }
+
+  const apartments = getStoredApartments();
+  const index = apartments.findIndex(a => Number(a.id) === apartmentId);
+
+  if (index === -1) {
+    return { success: false, message: 'Error al actualizar apartamento', error: 'Apartamento no encontrado' };
+  }
+
+  const normalized = normalizeApartmentDto(dto);
+
+  if (!normalized.nombre.trim()) {
+    return { success: false, message: 'Error al actualizar apartamento', error: 'El nombre es obligatorio' };
+  }
+  if (!Number.isInteger(normalized.piso)) {
+    return { success: false, message: 'Error al actualizar apartamento', error: 'El piso es obligatorio y debe ser numerico' };
+  }
+
+  // Si cambia el nombre, validamos unicidad
+  const existsName = apartments.some(
+    (a, i) => i !== index && (a.nombre || '').trim().toLowerCase() === normalized.nombre.trim().toLowerCase()
+  );
+  if (existsName) {
+    return { success: false, message: 'Error al actualizar apartamento', error: 'El nombre ya existe' };
+  }
+
+  const updated = {
+    ...apartments[index],
+    nombre: normalized.nombre,
+    piso: normalized.piso,
+    activo: normalized.activo,
+    id: apartments[index].id
+  };
+
+  apartments[index] = updated;
+  saveStoredApartments(apartments);
+
+  return { success: true, message: 'Apartamento actualizado', apartment: updated };
+};
+
+// Equivalente a PATCH /api/v1/apartments/{id}
+// En backend solo permite actualizar parcialmente nombre y/o piso.
+export const patchApartmentLocal = (id, dto = {}) => {
+  const apartmentId = Number(id);
+  if (!Number.isFinite(apartmentId)) {
+    return { success: false, message: 'Error al actualizar apartamento', error: 'ID invalido' };
+  }
+
+  const apartments = getStoredApartments();
+  const index = apartments.findIndex(a => Number(a.id) === apartmentId);
+
+  if (index === -1) {
+    return { success: false, message: 'Error al actualizar apartamento', error: 'Apartamento no encontrado' };
+  }
+
+  let hasChanges = false;
+  const next = { ...apartments[index] };
+
+  if (dto?.nombre != null) {
+    const nombre = String(dto.nombre).trim();
+    if (!nombre) {
+      return { success: false, message: 'Error al actualizar apartamento', error: 'El nombre no puede estar vacio' };
+    }
+
+    const existsName = apartments.some(
+      (a, i) => i !== index && (a.nombre || '').trim().toLowerCase() === nombre.toLowerCase()
+    );
+    if (existsName) {
+      return { success: false, message: 'Error al actualizar apartamento', error: 'El nombre ya existe' };
+    }
+
+    next.nombre = nombre;
+    hasChanges = true;
+  }
+
+  if (dto?.piso != null) {
+    const piso = Number(dto.piso);
+    if (!Number.isInteger(piso)) {
+      return { success: false, message: 'Error al actualizar apartamento', error: 'El piso debe ser numerico' };
+    }
+    next.piso = piso;
+    hasChanges = true;
+  }
+
+  if (!hasChanges) {
+    return {
+      success: false,
+      message: 'Error al actualizar apartamento',
+      error: 'Debe enviar al menos nombre o piso para actualizar'
+    };
+  }
+
+  apartments[index] = next;
+  saveStoredApartments(apartments);
+
+  return { success: true, message: 'Apartamento actualizado parcialmente', apartment: next };
+};
+
+// Equivalente a PATCH /api/v1/apartments/{id}/estado?activo=true|false
+export const updateApartmentEstadoLocal = (id, activo) => {
+  const apartmentId = Number(id);
+  if (!Number.isFinite(apartmentId)) {
+    return { success: false, message: 'Error al cambiar estado', error: 'ID invalido' };
+  }
+
+  const apartments = getStoredApartments();
+  const index = apartments.findIndex(a => Number(a.id) === apartmentId);
+
+  if (index === -1) {
+    return { success: false, message: 'Error al cambiar estado', error: 'Apartamento no encontrado' };
+  }
+
+  apartments[index] = {
+    ...apartments[index],
+    activo: Boolean(activo)
+  };
+
+  saveStoredApartments(apartments);
+
+  return { success: true, message: 'Estado actualizado', apartment: apartments[index] };
+};

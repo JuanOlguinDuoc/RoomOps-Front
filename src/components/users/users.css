@@ -36,10 +36,30 @@
   --users-search-max: 40rem;
 }
 
-.users-table {
-  /* Ancho completo y minimo para conservar legibilidad de columnas. */
+/* Contenedor con scroll horizontal para que la tabla no rompa el layout en mobile. */
+.users-table-wrapper {
   width: 100%;
-  min-width: 700px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.users-table {
+  /* Ancho completo; el min-width se ajusta por breakpoint. */
+  width: 100%;
+  min-width: 0;
+}
+
+/* En tablet+ aparecen las columnas ocultas; reforzar min-width para que no queden comprimidas. */
+@media (min-width: 576px) {
+  .users-table {
+    min-width: 480px;
+  }
+}
+
+@media (min-width: 768px) {
+  .users-table {
+    min-width: 600px;
+  }
 }
 
 .users-footer {
@@ -89,8 +109,45 @@
   color: #22a53e;
 }
 
-@media (max-width: 992px) {
+@media (max-width: 767px) {
   /* En movil, toolbar y footer pasan a columna para evitar cortes horizontales. */
+  .users-toolbar {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .users-toolbar .users-search,
+  .app-shell.sidebar-expanded .users-toolbar .users-search,
+  .app-shell.sidebar-narrow .users-toolbar .users-search {
+    max-width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .users-footer {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .users-footer .pagination {
+    /* Paginación más compacta en mobile. */
+    font-size: 0.85rem;
+  }
+
+  .users-actions {
+    min-width: 0;
+  }
+
+  /* Header de la tarjeta en mobile. */
+  .users-card .card-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 992px) {
+  /* En tablet, toolbar y footer pasan a columna para evitar cortes horizontales. */
   .users-toolbar {
     flex-direction: column;
     align-items: stretch !important;

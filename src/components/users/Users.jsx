@@ -452,23 +452,24 @@ export default function Users() {
           )}
 
           {/* Tabla de datos. */}
+          <div className="users-table-wrapper">
           <CTable align="middle" responsive hover className="users-table border text-center mb-0">
             <CTableHead color="light">
               <CTableRow>
-                <CTableHeaderCell className="text-start" style={{ width: '40px' }}>
+                <CTableHeaderCell className="text-start d-none d-sm-table-cell" style={{ width: '40px' }}>
                   <CFormCheck />
                 </CTableHeaderCell>
                 <CTableHeaderCell className="text-start">Usuario</CTableHeaderCell>
                 <CTableHeaderCell>Rol</CTableHeaderCell>
-                <CTableHeaderCell>Estado</CTableHeaderCell>
-                {isAdmin && <CTableHeaderCell>Acciones</CTableHeaderCell>}
+                <CTableHeaderCell className="d-none d-md-table-cell">Estado</CTableHeaderCell>
+                {isAdmin && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
               </CTableRow>
             </CTableHead>
             <CTableBody>
               {filteredUsers
                 .map((user) => (
                   <CTableRow key={user.id || user._id || user.email}>
-                    <CTableDataCell className="text-start">
+                    <CTableDataCell className="text-start d-none d-sm-table-cell">
                       <CFormCheck id={`check-${user.id || user._id || user.email}`} />
                     </CTableDataCell>
 
@@ -489,7 +490,7 @@ export default function Users() {
                     </CTableDataCell>
 
                     {/* Columna de estado (badge). */}
-                    <CTableDataCell>
+                    <CTableDataCell className="d-none d-md-table-cell">
                       <CBadge color={getBadgeColor(resolveUserStatus(user))} shape="rounded-pill" className="px-3 py-2">
                         {resolveUserStatus(user)}
                       </CBadge>
@@ -497,7 +498,7 @@ export default function Users() {
 
                     {/* Columna de acciones. */}
                     {isAdmin && (
-                    <CTableDataCell>
+                    <CTableDataCell className="d-none d-sm-table-cell">
                       <div className="users-actions d-flex justify-content-center gap-2">
                         <CButton
                           color="info"
@@ -546,6 +547,7 @@ export default function Users() {
                 ))}
             </CTableBody>
           </CTable>
+          </div>
 
           {/* Paginacion inferior. */}
           <div className="users-footer d-flex justify-content-between align-items-center mt-3 pt-3 border-top">

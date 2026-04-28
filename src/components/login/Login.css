@@ -1,16 +1,26 @@
-/* Container principal del login */
+/* ── Login page wrapper (centra el formulario en la pantalla) ── */
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100svh;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+/* Container principal del login — base mobile */
 .form {
-    max-width: 500px;
-    min-height: 600px;
+    width: 100%;
+    max-width: 480px;
+    min-height: auto;
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.485) 2%, rgba(68, 27, 60, 0.388) 100%);
     backdrop-filter: blur(10px);
     color: white;
-    border-radius: 20px;
+    border-radius: 16px;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.93);
-    padding: 1rem 2.5rem;
+    padding: 1.5rem 1.25rem;
     position: relative;
     overflow: hidden;
-    margin: 1rem auto;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -30,11 +40,11 @@
     pointer-events: none;
 }
 
-/* Título del formulario */
+/* Título del formulario — mobile */
 .form h2 {
-    font-size: 2.5rem;
+    font-size: 1.8rem;
     font-weight: bold;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     background: linear-gradient(45deg, #00ffd5, #c9fffb);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -47,23 +57,23 @@
 /* Formulario */
 .login-form {
     width: 100%;
-    max-width: 400px;
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
     position: relative;
     z-index: 1;
 }
 
-/* Inputs */
+/* Inputs — mobile */
 .login-form input {
     width: 100%;
-    padding: 1rem 1.5rem;
+    padding: 0.85rem 1.1rem;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border: 2px solid rgba(76, 205, 196, 0.3);
-    border-radius: 15px;
+    border-radius: 12px;
     color: white;
-    font-size: 1.1rem;
+    font-size: 1rem;
     transition: all 0.3s ease;
     box-sizing: border-box;
 }
@@ -85,15 +95,15 @@
     background: rgba(255, 255, 255, 0.12);
 }
 
-/* Botón de envío */
+/* Botón de envío — mobile */
 .login-form .btn {
     width: 100%;
-    padding: 1rem 2rem;
+    padding: 0.85rem 1.5rem;
     background: linear-gradient(185deg, var(--color-acento-oscuro), #00FFBB);
     border: none;
-    border-radius: 15px;
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: bold;
     color: white;
     transition: all 0.3s ease;
@@ -101,11 +111,11 @@
     box-shadow: 0 4px 15px rgba(107, 253, 255, 0.428);
     position: relative;
     overflow: hidden;
-    margin-top: 1rem;
+    margin-top: 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 60px;
+    min-height: 50px;
 }
 
 .login-form .btn:hover {
@@ -120,7 +130,7 @@
     box-shadow: 0 4px 15px rgba(107, 253, 255, 0.428);
 }
 
-/* Animación de spans en el botón (si se mantienen) */
+/* Animación de spans en el botón */
 .login-form .btn span {
     position: absolute;
     display: block;
@@ -187,10 +197,10 @@
 
 /* Mensaje de registro */
 .message {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
     text-align: center;
     color: rgba(255, 255, 255, 0.8);
-    font-size: 1rem;
+    font-size: 0.95rem;
     position: relative;
     z-index: 1;
 }
@@ -199,6 +209,7 @@
     color: #4ecdc4;
     text-decoration: none;
     font-weight: bold;
+    margin-left: 0.3rem;
     transition: all 0.3s ease;
 }
 
@@ -207,7 +218,7 @@
     text-shadow: 0 0 10px rgba(0, 255, 213, 0.5);
 }
 
-/* Estilos para mensajes de error (si se muestran) */
+/* Estilos para mensajes de error */
 .error-message {
     color: #ff6b6b;
     font-size: 0.9rem;
@@ -215,58 +226,47 @@
     text-align: center;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* ── Tablet y desktop ──────────────────────────────────────── */
+@media (min-width: 480px) {
     .form {
-        max-width: 90%;
-        padding: 2rem 1.5rem;
-        margin: 2rem auto;
+        padding: 2rem 2rem;
+        border-radius: 20px;
     }
 
     .form h2 {
-        font-size: 2rem;
+        font-size: 2.2rem;
+        margin-bottom: 1.75rem;
     }
 
     .login-form input {
-        padding: 0.8rem 1.2rem;
-        font-size: 1rem;
-    }
-
-    .login-form .btn {
-        padding: 0.8rem 1.5rem;
+        padding: 1rem 1.5rem;
         font-size: 1.1rem;
-        min-height: 50px;
-    }
-}
-
-@media (max-width: 480px) {
-    .form {
-        padding: 1.5rem 1rem;
-        margin: 1rem auto;
-    }
-
-    .form h2 {
-        font-size: 1.8rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .login-form {
-        gap: 0.8rem;
-    }
-
-    .login-form input {
-        padding: 0.7rem 1rem;
-        font-size: 0.9rem;
     }
 
     .login-form .btn {
-        padding: 0.7rem 1.2rem;
-        font-size: 1rem;
-        min-height: 45px;
+        font-size: 1.1rem;
+        min-height: 56px;
     }
 
     .message {
-        font-size: 0.9rem;
-        margin-top: 1.5rem;
+        font-size: 1rem;
+        margin-top: 2rem;
     }
 }
+
+@media (min-width: 768px) {
+    .form {
+        padding: 2.5rem 2.5rem;
+    }
+
+    .form h2 {
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .login-form .btn {
+        min-height: 60px;
+        font-size: 1.2rem;
+    }
+}
+

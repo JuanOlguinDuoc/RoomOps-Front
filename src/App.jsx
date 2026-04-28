@@ -1,35 +1,77 @@
 // Archivo principal de rutas.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import Sidebar from './components/sidebar/Sidebar.jsx'
 import Users from './components/users/Users.jsx'
 import Login from './components/login/Login.jsx'
+import Apartments from './components/apartments/Apartments.jsx'
 import { isUserLoggedIn } from './service/localStorage'
+import modelo2Logo from './assets/icons/modelo 2.svg'
 import './App.css'
 
 function Layout() {
   // Estado global del sidebar para que todo el layout se adapte al ancho actual.
   const [sidebarNarrow, setSidebarNarrow] = useState(true)
+  // Estado del sidebar en mobile (drawer overlay).
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  // Breakpoints reales del layout.
+  const [isMobileView, setIsMobileView] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  )
+  const [isDesktopView, setIsDesktopView] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 992px)').matches
+  )
 
-  // Estas clases permiten que CSS adapte las vistas segun sidebar colapsado o expandido.
+  useEffect(() => {
+    const mobileMq = window.matchMedia('(max-width: 767px)')
+    const desktopMq = window.matchMedia('(min-width: 992px)')
+
+    const handleMobile = (e) => setIsMobileView(e.matches)
+    const handleDesktop = (e) => setIsDesktopView(e.matches)
+
+    mobileMq.addEventListener('change', handleMobile)
+    desktopMq.addEventListener('change', handleDesktop)
+
+    return () => {
+      mobileMq.removeEventListener('change', handleMobile)
+      desktopMq.removeEventListener('change', handleDesktop)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Al salir de mobile, cerramos el drawer para evitar estados inconsistentes.
+    if (!isMobileView) {
+      setMobileSidebarOpen(false)
+    }
+  }, [isMobileView])
+
+  const effectiveSidebarNarrow = isDesktopView ? sidebarNarrow : false
 
   return (
-    <div className={`app-shell ${sidebarNarrow ? 'sidebar-narrow' : 'sidebar-expanded'}`}>
-      {/* El sidebar notifica cambios de ancho al layout para mantener todo sincronizado. */}
-      <Sidebar narrow={sidebarNarrow} onNarrowChange={setSidebarNarrow} />
+    <div className={`app-shell ${effectiveSidebarNarrow ? 'sidebar-narrow' : 'sidebar-expanded'} ${mobileSidebarOpen ? 'mobile-sidebar-open' : ''}`}>
+      {/* Header visible solo en mobile con hamburger y logo. */}
+      <header className="app-mobile-header">
+        <button
+          className="app-hamburger"
+          aria-label="Abrir menú"
+          onClick={() => setMobileSidebarOpen(true)}
+        >
+          <span /><span /><span />
+        </button>
+        <img src={modelo2Logo} alt="RoomOps" className="app-mobile-logo" />
+      </header>
 
-      <main
-        className="app-main"
-        style={{
-          flex: 1,
-          padding: '2rem',
-          background: 'linear-gradient(180deg, rgba(30, 83, 110, 0.34), rgba(26, 51, 74, 0.8))',
-          color: 'var(--roomops-text)',
-          borderLeft: '1px solid var(--roomops-border)',
-        }}
-      >
+      {/* El sidebar notifica cambios de ancho al layout para mantener todo sincronizado. */}
+      <Sidebar
+        narrow={effectiveSidebarNarrow}
+        onNarrowChange={setSidebarNarrow}
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
+      />
+
+      <main className="app-main">
         {/* Outlet renderiza la vista activa dentro del contenedor compartido con el sidebar. */}
         <Outlet />
       </main>
@@ -86,6 +128,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/home" element={<Home />} />
           <Route path='/users' element={<Users />} />
+          <Route path='/apartments' element={<Apartments/>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -100,6 +100,7 @@ export default function Login() {
     };
 
     return (
+        <div className="login-page">
         <div className="form">
             <h2>Inicio de sesión</h2>
             <form className="login-form" onSubmit={handleSubmit}>
@@ -134,6 +135,7 @@ export default function Login() {
                     Crear Cuenta
                 </Link>
             </p>
+        </div>
         </div>
     )
 }
