@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import Sidebar from './components/sidebar/Sidebar.jsx'
 import Users from './components/users/Users.jsx'
 import Login from './components/login/Login.jsx'
+import Task from './components/task/Task.jsx'
 import Apartments from './components/apartments/Apartments.jsx'
 import { isUserLoggedIn } from './service/localStorage'
 import modelo2Logo from './assets/icons/modelo 2.svg'
@@ -126,6 +127,7 @@ function App() {
           )}
         >
           <Route path="/" element={<Home />} />
+          <Route path='/tasks' element={<Task/>} />
           <Route path="/home" element={<Home />} />
           <Route path='/users' element={<Users />} />
           <Route path='/apartments' element={<Apartments/>} />

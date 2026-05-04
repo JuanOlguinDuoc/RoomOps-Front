@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { CButton, CSidebar, CSidebarBrand, CSidebarFooter, CSidebarHeader, CSidebarNav, CNavItem, CNavTitle } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilAccountLogout, cilSpeedometer, cilUser, cilBuilding } from '@coreui/icons'
+import { cilAccountLogout, cilSpeedometer, cilUser, cilBuilding, cilTask } from '@coreui/icons'
 import modelo1Logo from '../../assets/icons/modelo 1.svg'
 import modelo2Logo from '../../assets/icons/modelo 2.svg'
 import { confirmLogout } from '../../utils/alert'
@@ -107,6 +107,17 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
                 onClick={isMobileView ? onMobileClose : undefined}
               >
                 <CIcon customClassName="nav-icon" icon={cilBuilding} /> Apartamentos
+              </NavLink>
+            </CNavItem>
+          )}
+          {canViewUsers && (
+            <CNavItem>
+              <NavLink
+                to="/tasks"
+                className="nav-link"
+                onClick={isMobileView ? onMobileClose : undefined}
+              >
+                <CIcon customClassName="nav-icon" icon={cilTask} /> Tareas
               </NavLink>
             </CNavItem>
           )}
