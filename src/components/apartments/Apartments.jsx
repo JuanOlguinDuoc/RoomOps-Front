@@ -434,7 +434,7 @@ export default function Apartments() {
           {/* Tabla de datos. */}
           <div className="users-table-wrapper">
             <CTable align="middle" responsive hover className="users-table border text-center mb-0">
-              <CTableHead color="light">
+              <CTableHead color="primary">
                 <CTableRow>
                   <CTableHeaderCell className="text-start d-none d-sm-table-cell" style={{ width: '40px' }}>
                     <CFormCheck />
@@ -478,8 +478,8 @@ export default function Apartments() {
                               className="px-3 py-2 d-inline-flex align-items-center gap-1"
                             >
                               {resolveApartmentStatus(apartment) === 'Activo'
-                                ? <CircleCheckBig size={14} />
-                                : <CircleX size={14} />
+                                ? <CircleCheckBig size={20} />
+                                : <CircleX size={20} />
                               }
                               {resolveApartmentStatus(apartment)}
                             </CBadge>

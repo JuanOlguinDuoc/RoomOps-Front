@@ -454,7 +454,7 @@ export default function Users() {
           {/* Tabla de datos. */}
           <div className="users-table-wrapper">
           <CTable align="middle" responsive hover className="users-table border text-center mb-0">
-            <CTableHead color="light">
+            <CTableHead color="primary">
               <CTableRow>
                 <CTableHeaderCell className="text-start d-none d-sm-table-cell" style={{ width: '40px' }}>
                   <CFormCheck />

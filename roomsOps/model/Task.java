@@ -2,6 +2,8 @@ package com.hoteleria.roomsOps.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,6 +24,15 @@ public class Task {
     private String titulo;
 
     private String descripcion;
+
+    private String tipo;
+
+    private String prioridad;
+
+    private LocalDate fecha;
+
+    @Column(name = "due_time")
+    private LocalTime dueTime;
 
     @ManyToOne
     @JoinColumn(name = "apartment_id", nullable = false)

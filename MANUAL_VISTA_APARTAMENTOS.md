@@ -464,7 +464,7 @@ Que valida:
 Fragmento real:
 
 ~~~jsx
-<CTableHead color="light">
+<CTableHead color="primary">
 	<CTableRow>
 		<CTableHeaderCell>Apartamento</CTableHeaderCell>
 		<CTableHeaderCell>Piso</CTableHeaderCell>

@@ -2,10 +2,13 @@ package com.hoteleria.roomsOps.dto;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +26,20 @@ public class TaskDto {
     private Long id;
     private String titulo;
     private String descripcion;
+
+    @JsonAlias("type")
+    private String tipo;
+
+    @JsonAlias("priority")
+    private String prioridad;
+
+    @JsonAlias("date")
+    private LocalDate fecha;
+
+    @JsonProperty("dueTime")
+    @JsonAlias({"due_time", "dueDateTime"})
+    @JsonFormat(pattern = "HH:mm")
+    private LocalTime dueTime;
 
     @JsonProperty("apartamentoId")
     @JsonAlias("apartmentId")
@@ -47,6 +64,10 @@ public class TaskDto {
                 .id(t.getId())
                 .titulo(t.getTitulo())
                 .descripcion(t.getDescripcion())
+            .tipo(t.getTipo())
+            .prioridad(t.getPrioridad())
+            .fecha(t.getFecha())
+            .dueTime(t.getDueTime())
             .apartmentId(t.getApartment() != null ? t.getApartment().getId() : null)
             .assignedUserId(t.getAssignedTo() != null ? t.getAssignedTo().getId() : null)
             .statusId(t.getStatus() != null ? t.getStatus().getId() : null)
@@ -62,6 +83,10 @@ public class TaskDto {
                 .id(dto.getId())
                 .titulo(dto.getTitulo())
                 .descripcion(dto.getDescripcion())
+            .tipo(dto.getTipo())
+            .prioridad(dto.getPrioridad())
+            .fecha(dto.getFecha())
+            .dueTime(dto.getDueTime())
                 .checklist(dto.getChecklist() == null ? new ArrayList<>() : dto.getChecklist().stream()
                         .map(TaskDto::copyChecklistItem)
                         .collect(Collectors.toList()))
