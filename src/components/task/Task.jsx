@@ -182,6 +182,7 @@ export default function Task() {
  const [selectedApartment, setSelectedApartment] = useState('Todos')
  const [selectedStatus, setSelectedStatus] = useState('Todos')
  const [selectedType, setSelectedType] = useState('Todos')
+ const [selectedAssignee, setSelectedAssignee] = useState("Todos")
 
  useEffect(() => {
   refreshAll()
@@ -248,6 +249,8 @@ export default function Task() {
   return map
  }, [statuses])
 
+
+
  const getTaskStatusLabel = (task = {}) => {
   const id = getTaskStatusId(task)
   if (id == null) return 'Sin estado'
@@ -288,6 +291,23 @@ export default function Task() {
   const assigneeName = userId != null ? (userNameById.get(Number(userId)) || `Usuario ${userId}`) : 'Sin asignar'
   return normalizeSearchText(`${task.titulo || ''} ${task.descripcion || ''} ${typeLabel} ${priorityLabel} ${apartmentName} ${assigneeName} ${statusLabel}`)
  }
+
+ const assigneeOptions = useMemo(() => {
+  const sorted = [...users]
+   .filter((assignee) => assignee?.id != null)
+   .sort((a, b) => {
+    const aName = `${a.firstName || ''} ${a.lastName || ''}`.trim()
+    const bName = `${a.firstName || ''} ${a.lastName || ''}`.trim()
+    return aName.localeCompare(bName, 'es')
+   })
+
+  const formatted = sorted.map((user) => ({
+   id: String(user.id),
+   nombre: `${user.firstName || ''} ${user.lastName || ''}`.trim()
+  }))
+
+  return [{ id: 'Todos', nombre: 'Todos' }, ...formatted]
+ }, [users])
 
  const apartmentOptions = useMemo(() => {
   const sorted = [...apartments]
@@ -369,20 +389,23 @@ export default function Task() {
    const apartmentId = getTaskApartmentId(task)
    const statusId = getTaskStatusId(task)
    const typeId = normalizeSearchText(getTaskType(task))
+   const assignedUserId = getTaskAssignedUserId(task)
 
+   const matchesAssignee = selectedAssignee === 'Todos' || String(assignedUserId ?? '') === selectedAssignee
    const matchesSearch = !term || getTaskSearchIndex(task).includes(term)
    const matchesApartment = selectedApartment === 'Todos' || String(apartmentId ?? '') === selectedApartment
    const matchesStatus = selectedStatus === 'Todos' || String(statusId ?? '') === selectedStatus
    const matchesType = selectedType === 'Todos' || typeId === selectedType
 
-   return matchesSearch && matchesApartment && matchesStatus && matchesType
+   return matchesAssignee && matchesSearch && matchesApartment && matchesStatus && matchesType
   })
- }, [tasks, searchTerm, selectedApartment, selectedStatus, selectedType, apartmentNameById, userNameById, statusNameById])
+ }, [tasks, searchTerm, selectedAssignee, selectedApartment, selectedStatus, selectedType, apartmentNameById, userNameById, statusNameById])
 
  const clearFilters = () => {
   setSelectedApartment('Todos')
   setSelectedStatus('Todos')
   setSelectedType('Todos')
+  setSelectedAssignee('Todos')
  }
 
  const openCreateTaskModal = async () => {
@@ -784,6 +807,22 @@ export default function Task() {
         </select>
        </div>
 
+       <div>
+        <label htmlFor="task-assignee-filter" className="form-label mb-1">Asignación</label>
+        <select
+         id="task-assignee-filter"
+         className="form-select"
+         style={{ maxWidth: '250px' }}
+         value={selectedAssignee}
+         onChange={(e) => setSelectedAssignee(e.target.value)}
+         aria-label="Filtrar por persona asignada"
+        >
+         {assigneeOptions.map((user) => (
+          <option key={user.id} value={String(user.id)}>{user.nombre}</option>
+         ))}
+        </select>
+       </div>
+
        <div className="d-flex align-items-end">
         <CButton color="secondary" variant="outline" onClick={clearFilters}>
          Limpiar filtros
@@ -791,6 +830,8 @@ export default function Task() {
        </div>
       </div>
      )}
+
+
 
      <div className="users-table-wrapper">
       <CTable align="middle" responsive hover className="users-table task-table border text-center mb-0">
