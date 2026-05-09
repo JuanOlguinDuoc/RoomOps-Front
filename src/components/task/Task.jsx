@@ -1,37 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import {
- CCard,
- CCardHeader,
- CCardBody,
- CButton,
- CFormInput,
- CInputGroup,
- CInputGroupText,
- CTable,
- CTableHead,
- CTableRow,
- CTableHeaderCell,
- CTableBody,
- CTableDataCell,
- CBadge,
- CAvatar,
- CPagination,
- CPaginationItem,
- CFormCheck
-} from '@coreui/react'
+import { CCard, CCardHeader, CCardBody, CButton, CFormInput, CInputGroup, CInputGroupText, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CBadge, CAvatar, CPagination, CPaginationItem, CFormCheck } from '@coreui/react'
 import { CircleCheckBig, CircleX, Building2, UserRound, BookmarkCheck, CalendarDays, ClipboardClock } from 'lucide-react'
 import CIcon from '@coreui/icons-react'
-import { cilSearch, cilFilter, cilPlus, cilPencil, cilTrash } from '@coreui/icons'
+import { cilSearch, cilFilter, cilPlus, cilPencil, cilTrash, cilInfo } from '@coreui/icons'
 import Swal from 'sweetalert2'
 import './Task.css'
 import '../users/users.css'
 import { Navigate } from 'react-router-dom'
 import { confirmAction } from '../../utils/alert'
 import { showErrorToast, showSuccessToast } from '../../utils/toast'
-import {
- isUserLoggedIn, isUserAdmin, isUserSupervisor,
- getAllApartments, getAllUsers
-} from '../../service/localStorage'
+import {isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers} from '../../service/localStorage'
 import { getTasks, createTask, updateTask, deleteTask } from '../../service/taskService'
 import { getApartments } from '../../service/apartmentService'
 import { getUsers } from '../../service/userService'
@@ -175,6 +153,7 @@ export default function Task() {
  const [tasks, setTasks] = useState([])
  const [apartments, setApartments] = useState([])
  const [users, setUsers] = useState([])
+ const [dates, setDates] = useState ([])
  const [statuses, setStatuses] = useState([])
  const [loading, setLoading] = useState(false)
  const [searchTerm, setSearchTerm] = useState('')
@@ -183,6 +162,7 @@ export default function Task() {
  const [selectedStatus, setSelectedStatus] = useState('Todos')
  const [selectedType, setSelectedType] = useState('Todos')
  const [selectedAssignee, setSelectedAssignee] = useState("Todos")
+ const [selectedDate, setSelectedDate] = useState("Todos")
 
  useEffect(() => {
   refreshAll()
@@ -289,7 +269,7 @@ export default function Task() {
   const priorityLabel = getTaskPriority(task)
   const apartmentName = apartmentId != null ? (apartmentNameById.get(Number(apartmentId)) || `Apartamento ${apartmentId}`) : 'Sin apartamento'
   const assigneeName = userId != null ? (userNameById.get(Number(userId)) || `Usuario ${userId}`) : 'Sin asignar'
-  return normalizeSearchText(`${task.titulo || ''} ${task.descripcion || ''} ${typeLabel} ${priorityLabel} ${apartmentName} ${assigneeName} ${statusLabel}`)
+  return normalizeSearchText(`${task.titulo || ''} ${task.descripcion || ''} ${typeLabel} ${dateLabel} ${priorityLabel} ${apartmentName} ${assigneeName} ${statusLabel}`)
  }
 
  const assigneeOptions = useMemo(() => {
@@ -308,6 +288,21 @@ export default function Task() {
 
   return [{ id: 'Todos', nombre: 'Todos' }, ...formatted]
  }, [users])
+
+ const dateOptions = useMemo(() => {
+  const uniqueTypes = Array.from (
+   new Set(
+    tasks
+     .map((task) => normalizeSearchText(getTaskDate(task)))
+     .filter(Boolean)
+   )
+  )
+  const formatted = uniqueTypes.map((date) => ({
+   id: date,
+   fecha: date
+  }))
+  return [{ id: 'Todos', fecha: 'Todos' }, ...formatted]
+ }, [tasks])
 
  const apartmentOptions = useMemo(() => {
   const sorted = [...apartments]
@@ -390,22 +385,25 @@ export default function Task() {
    const statusId = getTaskStatusId(task)
    const typeId = normalizeSearchText(getTaskType(task))
    const assignedUserId = getTaskAssignedUserId(task)
+   const dateId = normalizeSearchText(getTaskDate(task))
 
+   const matchesDate = selectedDate === 'Todos' || dateId === selectedDate
    const matchesAssignee = selectedAssignee === 'Todos' || String(assignedUserId ?? '') === selectedAssignee
    const matchesSearch = !term || getTaskSearchIndex(task).includes(term)
    const matchesApartment = selectedApartment === 'Todos' || String(apartmentId ?? '') === selectedApartment
    const matchesStatus = selectedStatus === 'Todos' || String(statusId ?? '') === selectedStatus
    const matchesType = selectedType === 'Todos' || typeId === selectedType
 
-   return matchesAssignee && matchesSearch && matchesApartment && matchesStatus && matchesType
+   return matchesAssignee && matchesSearch && matchesApartment && matchesStatus && matchesType && matchesDate
   })
- }, [tasks, searchTerm, selectedAssignee, selectedApartment, selectedStatus, selectedType, apartmentNameById, userNameById, statusNameById])
+ }, [tasks, searchTerm, selectedDate, selectedAssignee, selectedApartment, selectedStatus, selectedType, apartmentNameById, userNameById, statusNameById])
 
  const clearFilters = () => {
   setSelectedApartment('Todos')
   setSelectedStatus('Todos')
   setSelectedType('Todos')
   setSelectedAssignee('Todos')
+  setSelectedDate('Todos')
  }
 
  const openCreateTaskModal = async () => {
@@ -684,6 +682,10 @@ export default function Task() {
   }
  }
 
+ const handleViewTask = (task) => {
+  
+ }
+
  const handleDeleteTask = (task) => {
   const taskId = task.id
   const title = task.titulo || 'esta tarea'
@@ -803,6 +805,22 @@ export default function Task() {
         >
          {statusOptions.map((status) => (
           <option key={status.id} value={String(status.id)}>{status.nombre}</option>
+         ))}
+        </select>
+       </div>
+
+       <div>
+        <label htmlFor="task-date-filter" className="form-label mb-1">Fecha</label>
+        <select
+         id="task-date-filter"
+         className="form-select"
+         style={{ maxWidth: '250px' }}
+         value={selectedDate}
+         onChange={(e) => setSelectedDate(e.target.value)}
+         aria-label="Filtrar por fecha"
+        >
+         {dateOptions.map((date) => (
+          <option key={date.id} value={String(date.id)}>{date.fecha}</option>
          ))}
         </select>
        </div>
@@ -936,6 +954,16 @@ export default function Task() {
                onClick={() => void openEditTaskModal(task)}
               >
                <CIcon icon={cilPencil} size="sm" />
+              </CButton>
+              <CButton
+               color="success"
+               variant="outline"
+               className="users-action-btn"
+               title="Ver detalle"
+               aria-label={`Detalle tarea ${task.titulo || 'tarea'}`}
+               onClick={() => handleViewTask(task)}
+              >
+               <CIcon icon={cilInfo} size="sm" />
               </CButton>
               <CButton
                color="danger"
