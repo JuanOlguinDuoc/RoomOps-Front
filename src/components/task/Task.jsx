@@ -14,127 +14,26 @@ import { getTasks, createTask, updateTask, deleteTask } from '../../service/task
 import { getApartments } from '../../service/apartmentService'
 import { getUsers } from '../../service/userService'
 import { getStatuses } from '../../service/statusService'
-
-const LOCAL_TASKS_KEY = 'tasks'
-const LOCAL_TASKS_NEXT_ID_KEY = 'nextTaskId'
-
-const getLocalTasks = () => {
- try {
-  const parsed = JSON.parse(localStorage.getItem(LOCAL_TASKS_KEY) || '[]')
-  return Array.isArray(parsed) ? parsed : []
- } catch (e) {
-  return []
- }
-}
-
-const saveLocalTasks = (tasks) => {
- localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(tasks))
-}
-
-const getNextLocalTaskId = () => {
- const current = Number(localStorage.getItem(LOCAL_TASKS_NEXT_ID_KEY) || '0')
- const next = current + 1
- localStorage.setItem(LOCAL_TASKS_NEXT_ID_KEY, String(next))
- return next
-}
-
-const getCurrentTaskTimestamps = () => {
- const now = new Date()
- const year = now.getFullYear()
- const month = String(now.getMonth() + 1).padStart(2, '0')
- const day = String(now.getDate()).padStart(2, '0')
- const hours = String(now.getHours()).padStart(2, '0')
- const minutes = String(now.getMinutes()).padStart(2, '0')
- return {
-  fecha: `${year}-${month}-${day}`,
-  dueTime: `${hours}:${minutes}`
- }
-}
-
-const normalizeTimeValue = (value = '') => {
- const raw = String(value || '').trim()
- if (!raw) return ''
- const timePart = raw.includes('T') ? raw.split('T')[1] : raw
- const parts = timePart.split(':')
- if (parts.length < 2) return ''
- const hh = String(parts[0]).padStart(2, '0')
- const mm = String(parts[1]).padStart(2, '0')
- return `${hh}:${mm}`
-}
-
-const getPriorityByType = (type = '') => {
- const normalized = String(type || '').trim().toLowerCase()
- if (normalized === 'mantencion') return 'ALTA'
- if (normalized === 'aseo') return 'MEDIA'
- return ''
-}
-
-const createTaskLocal = (payload) => {
- const tasks = getLocalTasks()
- if (!payload?.titulo?.trim()) {
-  return { success: false, message: 'El titulo es obligatorio' }
- }
+import {
+    getLocalTasks,
+    createTaskLocal,
+    updateTaskLocal,
+    deleteTaskLocal,
+    getCurrentTaskTimestamps,
+    normalizeTimeValue,
+    getPriorityByType,
+    parseTaskFromResponse,
+    getTaskApartmentId,
+    getTaskAssignedUserId,
+    getTaskStatusId,
+    getTaskType,
+    getTaskDate,
+    getTaskDueTime,
+    isTrabajadorUser
+} from './TaskFunctions'
+import { openCreateTaskModal, openEditTaskModal } from './TaskForm'
 
 
- const autoTimestamps = getCurrentTaskTimestamps()
-
- const newTask = {
-  id: getNextLocalTaskId(),
-  titulo: payload.titulo.trim(),
-  descripcion: payload.descripcion?.trim() || '',
-  tipo: payload.tipo?.trim() || '',
-  prioridad: payload.prioridad?.trim() || '',
-  fecha: payload.fecha || autoTimestamps.fecha,
-  dueTime: payload.dueTime || autoTimestamps.dueTime,
-  apartmentId: payload.apartmentId != null ? Number(payload.apartmentId) : null,
-  assignedUserId: payload.assignedUserId != null ? Number(payload.assignedUserId) : null,
-  statusId: payload.statusId != null ? Number(payload.statusId) : null,
-  checklist: []
- }
-
- tasks.push(newTask)
- saveLocalTasks(tasks)
- return { success: true, task: newTask }
-}
-
-const updateTaskLocal = (id, payload) => {
- const taskId = Number(id)
- const tasks = getLocalTasks()
- const idx = tasks.findIndex((task) => Number(task.id) === taskId)
-
- if (idx === -1) {
-  return { success: false, message: 'Tarea no encontrada' }
- }
-
- tasks[idx] = {
-  ...tasks[idx],
-  titulo: payload.titulo?.trim() || tasks[idx].titulo,
-  descripcion: payload.descripcion?.trim() || '',
-  tipo: payload.tipo?.trim() || '',
-  prioridad: payload.prioridad?.trim() || '',
-  fecha: payload.fecha || null,
-  dueTime: payload.dueTime || null,
-  apartmentId: payload.apartmentId != null ? Number(payload.apartmentId) : null,
-  assignedUserId: payload.assignedUserId != null ? Number(payload.assignedUserId) : null,
-  statusId: payload.statusId != null ? Number(payload.statusId) : null
- }
-
- saveLocalTasks(tasks)
- return { success: true, task: tasks[idx] }
-}
-
-const deleteTaskLocal = (id) => {
- const taskId = Number(id)
- const tasks = getLocalTasks()
- const updated = tasks.filter((task) => Number(task.id) !== taskId)
-
- if (updated.length === tasks.length) {
-  return { success: false, message: 'Tarea no encontrada' }
- }
-
- saveLocalTasks(updated)
- return { success: true }
-}
 
 export default function Task() {
  // Control de acceso: solo usuarios autenticados con rol admin o supervisor.
@@ -406,284 +305,12 @@ export default function Task() {
   setSelectedDate('Todos')
  }
 
- const openCreateTaskModal = async () => {
-  const apartmentSelectOptions = apartments
-   .filter((apartment) => apartment?.id != null)
-   .map((apartment) => `<option value="${apartment.id}">${apartment.nombre || `Apartamento ${apartment.id}`}</option>`)
-   .join('')
 
-  const userSelectOptions = users
-   .filter((user) => user?.id != null && isTrabajadorUser(user))
-   .map((user) => {
-    const label = `${user.firstName || user.nombre || ''} ${user.lastName || user.apellidos || ''}`.trim() || user.email || `Usuario ${user.id}`
-    return `<option value="${user.id}">${label}</option>`
-   })
-   .join('')
 
-  const statusSelectOptions = statuses
-   .filter((status) => status?.id != null)
-   .map((status) => `<option value="${status.id}">${status.nombre || `Estado ${status.id}`}</option>`)
-   .join('')
 
-  const result = await Swal.fire({
-   title: 'Crear tarea',
-   html: `
-                <div class="users-create-modal-form">
-                    <input id="swal-titulo" class="users-create-input" placeholder="Titulo" maxlength="100" />
-                    <textarea id="swal-descripcion" class="users-create-input users-create-textarea" placeholder="Descripcion" rows="3"></textarea>
-                    <select id="swal-tipo" class="users-create-input users-create-select">
-                        <option value="">Selecciona tipo</option>
-                        <option value="Aseo">Aseo</option>
-                        <option value="Mantencion">Mantencion</option>
-                    </select>
-                    <select id="swal-apartmentId" class="users-create-input users-create-select">
-                        <option value="">Selecciona apartamento</option>
-                        ${apartmentSelectOptions}
-                    </select>
-                    <select id="swal-assignedUserId" class="users-create-input users-create-select">
-                        <option value="">Sin asignar</option>
-                        ${userSelectOptions}
-                    </select>
-                    <select id="swal-statusId" class="users-create-input users-create-select">
-                        <option value="">Selecciona estado</option>
-                        ${statusSelectOptions}
-                    </select>
-                </div>
-            `,
-   width: 560,
-   focusConfirm: false,
-   showCancelButton: true,
-   buttonsStyling: false,
-   confirmButtonText: 'Crear tarea',
-   cancelButtonText: 'Cancelar',
-   customClass: {
-    popup: 'users-create-modal-popup',
-    title: 'users-create-modal-title',
-    htmlContainer: 'users-create-modal-content',
-    confirmButton: 'users-create-modal-confirm',
-    cancelButton: 'users-create-modal-cancel'
-   },
-   preConfirm: () => {
-    const autoTimestamps = getCurrentTaskTimestamps()
-    const titulo = document.getElementById('swal-titulo')?.value?.trim() || ''
-    const descripcion = document.getElementById('swal-descripcion')?.value?.trim() || ''
-    const tipo = document.getElementById('swal-tipo')?.value?.trim() || ''
-    const prioridad = getPriorityByType(tipo)
-    const apartmentIdRaw = document.getElementById('swal-apartmentId')?.value || ''
-    const assignedUserIdRaw = document.getElementById('swal-assignedUserId')?.value || ''
-    const statusIdRaw = document.getElementById('swal-statusId')?.value || ''
-
-    if (!titulo) {
-     Swal.showValidationMessage('El titulo es obligatorio')
-     return false
-    }
-
-    if (!apartmentIdRaw) {
-     Swal.showValidationMessage('Debes seleccionar un apartamento')
-     return false
-    }
-
-    if (!statusIdRaw) {
-     Swal.showValidationMessage('Debes seleccionar un estado')
-     return false
-    }
-
-    if (!tipo) {
-     Swal.showValidationMessage('Debes seleccionar el tipo de tarea')
-     return false
-    }
-
-    if (!prioridad) {
-     Swal.showValidationMessage('No se pudo determinar la prioridad automaticamente')
-     return false
-    }
-
-    return {
-     titulo,
-     descripcion,
-     tipo,
-     prioridad,
-     fecha: autoTimestamps.fecha,
-     dueTime: autoTimestamps.dueTime,
-     apartmentId: Number(apartmentIdRaw),
-     assignedUserId: assignedUserIdRaw ? Number(assignedUserIdRaw) : null,
-     statusId: Number(statusIdRaw),
-     checklist: []
-    }
-   }
-  })
-
-  if (!result.isConfirmed || !result.value) return
-
-  try {
-   try {
-    const response = await createTask(result.value)
-    const created = parseTaskFromResponse(response)
-    if (!created) {
-     throw new Error('Respuesta inesperada del backend')
-    }
-   } catch (err) {
-    const localResult = createTaskLocal(result.value)
-    if (!localResult?.success) {
-     throw new Error(localResult?.message || 'No se pudo crear la tarea en localStorage')
-    }
-    showErrorToast('Se uso copia local por falla del servidor')
-   }
-
-   showSuccessToast('Tarea creada')
-   await refreshAll()
-  } catch (err) {
-   console.error('Error creating task', err)
-   const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error creando tarea'
-   showErrorToast(msg)
-  }
- }
-
- const openEditTaskModal = async (task) => {
-  const taskId = task.id
-  const initialTitle = task.titulo || ''
-  const initialDescription = task.descripcion || ''
-  const initialType = getTaskType(task)
-  const initialDate = getTaskDate(task)
-  const initialDueTime = getTaskDueTime(task)
-  const initialApartmentId = getTaskApartmentId(task)
-  const initialAssignedUserId = getTaskAssignedUserId(task)
-  const initialStatusId = getTaskStatusId(task)
-  const initialDueTimeInputValue = normalizeTimeValue(initialDueTime)
-
-  const apartmentSelectOptions = apartments
-   .filter((apartment) => apartment?.id != null)
-   .map((apartment) => `<option value="${apartment.id}" ${Number(apartment.id) === Number(initialApartmentId) ? 'selected' : ''}>${apartment.nombre || `Apartamento ${apartment.id}`}</option>`)
-   .join('')
-
-  const userSelectOptions = users
-   .filter((user) => user?.id != null && isTrabajadorUser(user))
-   .map((user) => {
-    const label = `${user.firstName || user.nombre || ''} ${user.lastName || user.apellidos || ''}`.trim() || user.email || `Usuario ${user.id}`
-    return `<option value="${user.id}" ${Number(user.id) === Number(initialAssignedUserId) ? 'selected' : ''}>${label}</option>`
-   })
-   .join('')
-
-  const statusSelectOptions = statuses
-   .filter((status) => status?.id != null)
-   .map((status) => `<option value="${status.id}" ${Number(status.id) === Number(initialStatusId) ? 'selected' : ''}>${status.nombre || `Estado ${status.id}`}</option>`)
-   .join('')
-
-  const result = await Swal.fire({
-   title: 'Editar tarea',
-   html: `
-                <div class="users-create-modal-form">
-                    <input id="swal-titulo" class="users-create-input" placeholder="Titulo" maxlength="100" value="${initialTitle}" />
-                    <textarea id="swal-descripcion" class="users-create-input users-create-textarea" placeholder="Descripcion" rows="3">${initialDescription}</textarea>
-                    <select id="swal-tipo" class="users-create-input users-create-select">
-                        <option value="" ${!initialType ? 'selected' : ''}>Selecciona tipo</option>
-                        <option value="Aseo" ${initialType === 'Aseo' ? 'selected' : ''}>Aseo</option>
-                        <option value="Mantencion" ${initialType === 'Mantencion' ? 'selected' : ''}>Mantencion</option>
-                    </select>
-                    <input id="swal-fecha" class="users-create-input" type="date" value="${initialDate || ''}" />
-                    <input id="swal-dueTime" class="users-create-input" type="time" value="${initialDueTimeInputValue}" />
-                    <select id="swal-apartmentId" class="users-create-input users-create-select">
-                        <option value="">Selecciona apartamento</option>
-                        ${apartmentSelectOptions}
-                    </select>
-                    <select id="swal-assignedUserId" class="users-create-input users-create-select">
-                        <option value="">Sin asignar</option>
-                        ${userSelectOptions}
-                    </select>
-                    <select id="swal-statusId" class="users-create-input users-create-select">
-                        <option value="">Selecciona estado</option>
-                        ${statusSelectOptions}
-                    </select>
-                </div>
-            `,
-   width: 560,
-   focusConfirm: false,
-   showCancelButton: true,
-   buttonsStyling: false,
-   confirmButtonText: 'Guardar cambios',
-   cancelButtonText: 'Cancelar',
-   customClass: {
-    popup: 'users-create-modal-popup',
-    title: 'users-create-modal-title',
-    htmlContainer: 'users-create-modal-content',
-    confirmButton: 'users-create-modal-confirm',
-    cancelButton: 'users-create-modal-cancel'
-   },
-   preConfirm: () => {
-    const titulo = document.getElementById('swal-titulo')?.value?.trim() || ''
-    const descripcion = document.getElementById('swal-descripcion')?.value?.trim() || ''
-    const tipo = document.getElementById('swal-tipo')?.value?.trim() || ''
-    const prioridad = getPriorityByType(tipo)
-    const fecha = document.getElementById('swal-fecha')?.value || ''
-    const dueTimeRaw = normalizeTimeValue(document.getElementById('swal-dueTime')?.value || '')
-    const apartmentIdRaw = document.getElementById('swal-apartmentId')?.value || ''
-    const assignedUserIdRaw = document.getElementById('swal-assignedUserId')?.value || ''
-    const statusIdRaw = document.getElementById('swal-statusId')?.value || ''
-
-    if (!titulo) {
-     Swal.showValidationMessage('El titulo es obligatorio')
-     return false
-    }
-
-    if (!apartmentIdRaw) {
-     Swal.showValidationMessage('Debes seleccionar un apartamento')
-     return false
-    }
-
-    if (!statusIdRaw) {
-     Swal.showValidationMessage('Debes seleccionar un estado')
-     return false
-    }
-
-    if (!tipo) {
-     Swal.showValidationMessage('Debes seleccionar el tipo de tarea')
-     return false
-    }
-
-    if (!prioridad) {
-     Swal.showValidationMessage('No se pudo determinar la prioridad automaticamente')
-     return false
-    }
-
-    return {
-     titulo,
-     descripcion,
-     tipo,
-     prioridad,
-     fecha: fecha || null,
-     dueTime: dueTimeRaw || null,
-     apartmentId: Number(apartmentIdRaw),
-     assignedUserId: assignedUserIdRaw ? Number(assignedUserIdRaw) : null,
-     statusId: Number(statusIdRaw),
-     checklist: task.checklist || task.listaVerificacion || []
-    }
-   }
-  })
-
-  if (!result.isConfirmed || !result.value) return
-
-  try {
-   try {
-    await updateTask(taskId, result.value)
-   } catch (err) {
-    const localResult = updateTaskLocal(taskId, result.value)
-    if (!localResult?.success) {
-     throw new Error(localResult?.message || 'No se pudo actualizar la tarea en localStorage')
-    }
-    showErrorToast('Se uso copia local por falla del servidor')
-   }
-
-   showSuccessToast('Tarea actualizada')
-   await refreshAll()
-  } catch (err) {
-   console.error('Error updating task', err)
-   const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error actualizando tarea'
-   showErrorToast(msg)
-  }
- }
 
  const handleViewTask = (task) => {
-  
+ 
  }
 
  const handleDeleteTask = (task) => {
@@ -718,8 +345,52 @@ export default function Task() {
   })
  }
 
- const handleStartCreate = () => {
-  void openCreateTaskModal()
+ const handleStartCreate = async () => {
+  try {
+   const result = await openCreateTaskModal(apartments, users, statuses)
+   if (!result?.isConfirmed || !result?.value) return
+
+   try {
+    await createTask(result.value)
+   } catch (err) {
+    const localResult = createTaskLocal(result.value)
+    if (!localResult?.success) {
+     throw new Error(localResult?.message || 'No se pudo crear la tarea en localStorage')
+    }
+    showErrorToast('Se uso copia local por falla del servidor')
+   }
+
+   showSuccessToast('Tarea creada')
+   await refreshAll()
+  } catch (err) {
+   console.error('Error creating task', err)
+   const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error creando tarea'
+   showErrorToast(msg)
+  }
+ }
+
+ const handleEditTask = async (task) => {
+  try {
+   const result = await openEditTaskModal(task, apartments, users, statuses)
+   if (!result?.isConfirmed || !result?.value) return
+
+   try {
+    await updateTask(task.id, result.value)
+   } catch (err) {
+    const localResult = updateTaskLocal(task.id, result.value)
+    if (!localResult?.success) {
+     throw new Error(localResult?.message || 'No se pudo actualizar la tarea en localStorage')
+    }
+    showErrorToast('Se uso copia local por falla del servidor')
+   }
+
+   showSuccessToast('Tarea actualizada')
+   await refreshAll()
+  } catch (err) {
+   console.error('Error updating task', err)
+   const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error actualizando tarea'
+   showErrorToast(msg)
+  }
  }
 
  return (
@@ -951,7 +622,7 @@ export default function Task() {
                className="users-action-btn"
                title="Editar tarea"
                aria-label={`Editar tarea ${task.titulo || 'tarea'}`}
-               onClick={() => void openEditTaskModal(task)}
+               onClick={() => void handleEditTask(task)}
               >
                <CIcon icon={cilPencil} size="sm" />
               </CButton>
