@@ -9,28 +9,27 @@ import '../users/users.css'
 import { Navigate } from 'react-router-dom'
 import { confirmAction } from '../../utils/alert'
 import { showErrorToast, showSuccessToast } from '../../utils/toast'
-import {isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers} from '../../service/localStorage'
+import { isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers } from '../../service/localStorage'
 import { getTasks, createTask, updateTask, deleteTask } from '../../service/taskService'
 import { getApartments } from '../../service/apartmentService'
 import { getUsers } from '../../service/userService'
 import { getStatuses } from '../../service/statusService'
-import { GrView } from "react-icons/gr";
 import {
-    getLocalTasks,
-    createTaskLocal,
-    updateTaskLocal,
-    deleteTaskLocal,
-    getCurrentTaskTimestamps,
-    normalizeTimeValue,
-    getPriorityByType,
-    parseTaskFromResponse,
-    getTaskApartmentId,
-    getTaskAssignedUserId,
-    getTaskStatusId,
-    getTaskType,
-    getTaskDate,
-    getTaskDueTime,
-    isTrabajadorUser
+ getLocalTasks,
+ createTaskLocal,
+ updateTaskLocal,
+ deleteTaskLocal,
+ getCurrentTaskTimestamps,
+ normalizeTimeValue,
+ getPriorityByType,
+ parseTaskFromResponse,
+ getTaskApartmentId,
+ getTaskAssignedUserId,
+ getTaskStatusId,
+ getTaskType,
+ getTaskDate,
+ getTaskDueTime,
+ isTrabajadorUser
 } from './TaskFunctions'
 import { openCreateTaskModal, openEditTaskModal } from './TaskForm'
 
@@ -53,7 +52,7 @@ export default function Task() {
  const [tasks, setTasks] = useState([])
  const [apartments, setApartments] = useState([])
  const [users, setUsers] = useState([])
- const [dates, setDates] = useState ([])
+ const [dates, setDates] = useState([])
  const [statuses, setStatuses] = useState([])
  const [loading, setLoading] = useState(false)
  const [searchTerm, setSearchTerm] = useState('')
@@ -190,7 +189,7 @@ export default function Task() {
  }, [users])
 
  const dateOptions = useMemo(() => {
-  const uniqueTypes = Array.from (
+  const uniqueTypes = Array.from(
    new Set(
     tasks
      .map((task) => normalizeSearchText(getTaskDate(task)))
@@ -311,7 +310,7 @@ export default function Task() {
 
 
  const handleViewTask = (task) => {
- 
+
  }
 
  const handleDeleteTask = (task) => {

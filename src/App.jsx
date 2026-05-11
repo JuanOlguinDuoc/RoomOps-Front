@@ -7,6 +7,7 @@ import Sidebar from './components/sidebar/Sidebar.jsx'
 import Users from './components/users/Users.jsx'
 import Login from './components/login/Login.jsx'
 import Task from './components/task/Task.jsx'
+import Kanban from './components/kanban/Kanban.jsx'
 import Apartments from './components/apartments/Apartments.jsx'
 import { isUserLoggedIn } from './service/localStorage'
 import modelo2Logo from './assets/icons/modelo 2.svg'
@@ -105,6 +106,24 @@ function RequireGuest({ children }) {
 }
 
 function App() {
+  const [, setAuthCheckTick] = useState(0)
+
+  useEffect(() => {
+    const triggerAuthCheck = () => setAuthCheckTick((prev) => prev + 1)
+
+    const intervalId = window.setInterval(triggerAuthCheck, 30000)
+    window.addEventListener('focus', triggerAuthCheck)
+    window.addEventListener('authChanged', triggerAuthCheck)
+    window.addEventListener('storage', triggerAuthCheck)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', triggerAuthCheck)
+      window.removeEventListener('authChanged', triggerAuthCheck)
+      window.removeEventListener('storage', triggerAuthCheck)
+    }
+  }, [])
+
   return (
     <Router>
       <ToastContainer />
@@ -127,10 +146,11 @@ function App() {
           )}
         >
           <Route path="/" element={<Home />} />
-          <Route path='/tasks' element={<Task/>} />
+          <Route path='/tasks' element={<Task />} />
           <Route path="/home" element={<Home />} />
           <Route path='/users' element={<Users />} />
-          <Route path='/apartments' element={<Apartments/>} />
+          <Route path='/apartments' element={<Apartments />} />
+          <Route path='/kanban' element={<Kanban />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

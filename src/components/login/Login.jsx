@@ -50,7 +50,7 @@ export default function Login() {
                 localStorage.removeItem('roles');
                 localStorage.removeItem('registeredUsers');
                 localStorage.removeItem('nextUserId');
-                
+
                 // guardar token y configurar instancia api
                 setAuthToken(token);
                 // establecer sesión mínima inmediatamente para actualizar UI (Navbar, Checkout)
@@ -101,41 +101,37 @@ export default function Login() {
 
     return (
         <div className="login-page">
-        <div className="form">
-            <h2>Inicio de sesión</h2>
-            <form className="login-form" onSubmit={handleSubmit}>
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="Correo Electrónico *"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                /><br />
-                <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    placeholder="Contraseña *"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                /><br />
-                <button type="submit" className="btn" disabled={loading}>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    {loading ? 'Ingresando...' : 'Iniciar sesión'}
-                </button>
-            </form>
-            <p className="message">¿No tienes una cuenta?
-                <Link to={`/register${redirectTo ? `?redirect=${redirectTo}` : ''}`}>
-                    Crear Cuenta
-                </Link>
-            </p>
-        </div>
+            <div className="form">
+                <h2>Inicio de sesión</h2>
+                <form className="login-form" onSubmit={handleSubmit}>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Correo Electrónico *"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    /><br />
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Contraseña *"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    /><br />
+                    <button type="submit" className="btn" disabled={loading}>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        {loading ? 'Ingresando...' : 'Iniciar sesión'}
+                    </button>
+                </form>
+
+            </div>
         </div>
     )
 }

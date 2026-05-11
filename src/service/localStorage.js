@@ -16,12 +16,39 @@
 //   localStorage.setItem('nextUserId', '1');
 // }
 
+const TOKEN_KEY = 'token';
+
 const getNextUserId = () => {
   const current = parseInt(localStorage.getItem('nextUserId') || '0', 10);
   const next = current + 1;
   localStorage.setItem('nextUserId', String(next));
   return next;
 }
+
+const decodeJwtPayload = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch (e) {
+    return null;
+  }
+};
+
+export const isTokenExpired = (token = localStorage.getItem(TOKEN_KEY)) => {
+  if (!token) return true;
+
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return true;
+
+  return Date.now() >= payload.exp * 1000;
+};
+
+export const hasValidToken = (token = localStorage.getItem(TOKEN_KEY)) => {
+  return !isTokenExpired(token);
+};
 
 // CRUD helpers for roles
 export const getAllRoles = () => JSON.parse(localStorage.getItem('roles')) || [];
@@ -110,6 +137,7 @@ export const setUserSession = (userData) => {
 export const clearUserSession = () => {
   localStorage.setItem('isLoggedIn', 'false');
   localStorage.removeItem('currentUser');
+  localStorage.removeItem(TOKEN_KEY);
   // Limpiar datos mockeados cuando se cierra sesión
   localStorage.removeItem('roles');
   localStorage.removeItem('registeredUsers');
@@ -119,7 +147,15 @@ export const clearUserSession = () => {
 }
 
 export const isUserLoggedIn = () => {
-  return localStorage.getItem('isLoggedIn') === 'true';
+  const isLoggedFlag = localStorage.getItem('isLoggedIn') === 'true';
+  if (!isLoggedFlag) return false;
+
+  if (!hasValidToken()) {
+    clearUserSession();
+    return false;
+  }
+
+  return true;
 }
 
 export const getCurrentUser = () => {

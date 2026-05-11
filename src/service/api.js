@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { clearUserSession } from './localStorage';
+import { clearUserSession, hasValidToken } from './localStorage';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
@@ -19,8 +19,11 @@ export const setAuthToken = (token) => {
 };
 
 const storedToken = localStorage.getItem('token');
-if (storedToken) {
+if (storedToken && hasValidToken(storedToken)) {
   setAuthToken(storedToken);
+} else if (storedToken) {
+  setAuthToken(null);
+  clearUserSession();
 }
 
 
