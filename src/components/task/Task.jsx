@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { CCard, CCardHeader, CCardBody, CButton, CFormInput, CInputGroup, CInputGroupText, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CBadge, CAvatar, CPagination, CPaginationItem, CFormCheck } from '@coreui/react'
 import { CircleCheckBig, CircleX, Building2, UserRound, BookmarkCheck, CalendarDays, ClipboardClock } from 'lucide-react'
 import CIcon from '@coreui/icons-react'
-import { cilSearch, cilFilter, cilPlus, cilPencil, cilTrash, cilInfo } from '@coreui/icons'
+import * as icon from '@coreui/icons';
 import Swal from 'sweetalert2'
 import './Task.css'
 import '../users/users.css'
@@ -14,6 +14,7 @@ import { getTasks, createTask, updateTask, deleteTask } from '../../service/task
 import { getApartments } from '../../service/apartmentService'
 import { getUsers } from '../../service/userService'
 import { getStatuses } from '../../service/statusService'
+import { GrView } from "react-icons/gr";
 import {
     getLocalTasks,
     createTaskLocal,
@@ -400,7 +401,7 @@ export default function Task() {
      <h4 className="mb-0 fw-bold">Gestion de Tareas</h4>
      {isAdmin && (
       <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
-       <CIcon icon={cilPlus} /> Anadir Tarea
+       <CIcon icon={icon.cilPlus} /> Anadir Tarea
       </CButton>
      )}
     </CCardHeader>
@@ -409,7 +410,7 @@ export default function Task() {
      <div className="users-toolbar d-flex justify-content-between mb-3">
       <CInputGroup className="users-search">
        <CInputGroupText className="bg-white">
-        <CIcon icon={cilSearch} />
+        <CIcon icon={icon.cilSearch} />
        </CInputGroupText>
        <CFormInput
         placeholder="Buscar por titulo, apartamento, usuario o estado..."
@@ -425,7 +426,7 @@ export default function Task() {
         className="users-filter-btn text-dark border d-flex align-items-center gap-2"
         onClick={() => setShowFilters((prev) => !prev)}
        >
-        <CIcon icon={cilFilter} /> Filtrar
+        <CIcon icon={icon.cilFilter} /> Filtrar
        </CButton>
       </div>
      </div>
@@ -624,7 +625,7 @@ export default function Task() {
                aria-label={`Editar tarea ${task.titulo || 'tarea'}`}
                onClick={() => void handleEditTask(task)}
               >
-               <CIcon icon={cilPencil} size="sm" />
+               <CIcon icon={icon.cilPencil} size="sm" />
               </CButton>
               <CButton
                color="success"
@@ -634,7 +635,7 @@ export default function Task() {
                aria-label={`Detalle tarea ${task.titulo || 'tarea'}`}
                onClick={() => handleViewTask(task)}
               >
-               <CIcon icon={cilInfo} size="sm" />
+               <CIcon icon={icon.cilZoom} size="sm" />
               </CButton>
               <CButton
                color="danger"
@@ -643,7 +644,7 @@ export default function Task() {
                aria-label={`Eliminar tarea ${task.titulo || 'tarea'}`}
                onClick={() => handleDeleteTask(task)}
               >
-               <CIcon icon={cilTrash} size="sm" />
+               <CIcon icon={icon.cilTrash} size="sm" />
               </CButton>
              </div>
             </CTableDataCell>
