@@ -29,6 +29,7 @@ import {
  getTaskType,
  getTaskDate,
  getTaskDueTime,
+ resolveTaskStatusIdFromChecklist,
  isTrabajadorUser
 } from './TaskFunctions'
 import { openCreateTaskModal, openEditTaskModal } from './TaskForm'
@@ -315,6 +316,48 @@ export default function Task() {
  const handleViewTask = (task) => {
   setSelectedTaskDetail(task)
   setIsTaskDetailOpen(true)
+ }
+
+ const handleSaveTaskChecklist = async (task, checklistItems = []) => {
+  const taskId = task?.id
+  if (taskId == null) return false
+
+  const typeLabel = getTaskType(task)
+    const nextStatusId = resolveTaskStatusIdFromChecklist(statuses, checklistItems, getTaskStatusId(task))
+  const payload = {
+   titulo: task?.titulo || '',
+   descripcion: task?.descripcion || '',
+   tipo: typeLabel || '',
+   prioridad: task?.prioridad ?? task?.priority ?? getPriorityByType(typeLabel),
+   fecha: getTaskDate(task) || null,
+   dueTime: getTaskDueTime(task) || null,
+   apartmentId: getTaskApartmentId(task),
+   assignedUserId: getTaskAssignedUserId(task),
+     statusId: nextStatusId,
+     estadoId: nextStatusId,
+   checklist: Array.isArray(checklistItems) ? checklistItems : []
+  }
+
+  try {
+   try {
+    await updateTask(taskId, payload)
+   } catch (err) {
+    const localResult = updateTaskLocal(taskId, payload)
+    if (!localResult?.success) {
+     throw new Error(localResult?.message || 'No se pudo actualizar el checklist en localStorage')
+    }
+    showErrorToast('Se uso copia local por falla del servidor')
+   }
+
+   showSuccessToast('Checklist actualizado')
+   await refreshAll()
+   return true
+  } catch (err) {
+   console.error('Error updating checklist', err)
+   const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error actualizando checklist'
+   showErrorToast(msg)
+   return false
+  }
  }
 
  const handleCloseTaskDetail = () => {
@@ -686,6 +729,7 @@ export default function Task() {
      userNameById={userNameById}
      statusNameById={statusNameById}
      getDeadLine={getDeadLine}
+     onSaveChecklist={handleSaveTaskChecklist}
     />
   </div>
  )

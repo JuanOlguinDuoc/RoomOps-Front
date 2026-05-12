@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react'
-import { Building2, UserRound, CalendarDays, ClipboardClock, CheckSquare, X } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Building2, UserRound, CalendarDays, ClipboardClock, CheckSquare, Plus, X } from 'lucide-react'
+import Swal from 'sweetalert2'
 import {
   getTaskApartmentId,
   getTaskAssignedUserId,
@@ -40,6 +41,43 @@ const getChecklistItemNote = (item = {}) => {
   return item?.nota || item?.observacion || item?.comentario || item?.detalle || ''
 }
 
+const getChecklistItemDescription = (item = {}) => {
+  return item?.descripcion || item?.titulo || item?.title || item?.nombre || ''
+}
+
+const applyChecklistStateToItem = (item = {}, stateKey = 'pending') => {
+  if (stateKey === 'done') {
+    return {
+      ...item,
+      estado: 'HECHO'
+    }
+  }
+
+  if (stateKey === 'blocked') {
+    return {
+      ...item,
+      estado: 'BLOQUEADO'
+    }
+  }
+
+  return {
+    ...item,
+    estado: 'PENDIENTE'
+  }
+}
+
+const normalizeChecklistItemForSave = (item = {}) => {
+  const state = getChecklistItemState(item)
+  const description = getChecklistItemDescription(item).trim()
+  const note = getChecklistItemNote(item).trim()
+
+  return {
+    descripcion: description,
+    estado: state.key === 'done' ? 'HECHO' : state.key === 'blocked' ? 'BLOQUEADO' : 'PENDIENTE',
+    nota: state.key === 'blocked' ? note : ''
+  }
+}
+
 export default function TaskDetailPanel({
   isOpen,
   task,
@@ -47,16 +85,126 @@ export default function TaskDetailPanel({
   apartmentNameById,
   userNameById,
   statusNameById,
-  getDeadLine
+  getDeadLine,
+  onSaveChecklist
 }) {
-  const checklist = useMemo(() => {
+  const [editableChecklist, setEditableChecklist] = useState([])
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
     const rawChecklist = task?.checklist || task?.listaVerificacion || []
-    return Array.isArray(rawChecklist) ? rawChecklist : []
-  }, [task])
+    setEditableChecklist(Array.isArray(rawChecklist) ? rawChecklist : [])
+  }, [task, isOpen])
 
   const checklistDoneCount = useMemo(() => {
-    return checklist.filter((item) => getChecklistItemState(item).key === 'done').length
-  }, [checklist])
+    return editableChecklist.filter((item) => getChecklistItemState(item).key === 'done').length
+  }, [editableChecklist])
+
+  const handleAddChecklistPending = async () => {
+    const result = await Swal.fire({
+      title: 'Nuevo pendiente del checklist',
+      html: `
+        <div class="users-create-modal-form">
+          <input
+            id="swal-checklist-pending"
+            class="users-create-input"
+            placeholder="Ej: Reponer toallas"
+            maxlength="120"
+          />
+        </div>
+      `,
+      width: 520,
+      backdrop: false,
+      focusConfirm: false,
+      showCancelButton: true,
+      buttonsStyling: false,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      customClass: {
+        container: 'task-detail-swal-container',
+        popup: 'users-create-modal-popup',
+        title: 'users-create-modal-title',
+        htmlContainer: 'users-create-modal-content',
+        confirmButton: 'users-create-modal-confirm',
+        cancelButton: 'users-create-modal-cancel'
+      },
+      preConfirm: () => {
+        const value = document.getElementById('swal-checklist-pending')?.value || ''
+        const title = String(value).trim()
+        if (!title) {
+          Swal.showValidationMessage('Debes escribir un pendiente')
+          return false
+        }
+        return title
+      }
+    })
+
+    if (!result?.isConfirmed || !result.value) return
+
+    const title = String(result.value).trim()
+    if (!title) return
+
+    setEditableChecklist((current) => ([
+      ...current,
+      {
+        descripcion: title,
+        estado: 'PENDIENTE'
+      }
+    ]))
+  }
+
+  const handleSaveChecklist = async () => {
+    if (typeof onSaveChecklist !== 'function') {
+      onClose()
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const sanitizedChecklist = editableChecklist.map(normalizeChecklistItemForSave)
+      const saved = await onSaveChecklist(task, sanitizedChecklist)
+      if (saved !== false) {
+        onClose()
+      }
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleChecklistStateChange = (index, nextStateKey) => {
+    setEditableChecklist((current) => (
+      current.map((item, itemIndex) => {
+        if (itemIndex !== index) return item
+
+        const updatedItem = applyChecklistStateToItem(item, nextStateKey)
+        if (nextStateKey !== 'blocked') {
+          return {
+            ...updatedItem,
+            nota: '',
+            observacion: '',
+            comentario: ''
+          }
+        }
+
+        return updatedItem
+      })
+    ))
+  }
+
+  const handleChecklistBlockedNoteChange = (index, value) => {
+    const shortNote = String(value || '').slice(0, 80)
+    setEditableChecklist((current) => (
+      current.map((item, itemIndex) => (
+        itemIndex === index
+          ? {
+            ...item,
+            nota: shortNote,
+            observacion: shortNote
+          }
+          : item
+      ))
+    ))
+  }
 
   if (!isOpen || !task) return null
 
@@ -119,14 +267,24 @@ export default function TaskDetailPanel({
           <section className="task-detail-section">
             <div className="task-detail-checklist-header">
               <h3 className="task-detail-section-title">Checklist</h3>
-              <span className="task-detail-counter">{checklistDoneCount}/{checklist.length}</span>
+              <span className="task-detail-counter">{checklistDoneCount}/{editableChecklist.length}</span>
+            </div>
+
+            <div className="task-detail-checklist-adder">
+              <button
+                type="button"
+                className="task-detail-checklist-add-btn"
+                onClick={handleAddChecklistPending}
+              >
+                <Plus size={14} /> Agregar pendiente
+              </button>
             </div>
 
             <div className="task-detail-checklist">
-              {checklist.length === 0 ? (
+              {editableChecklist.length === 0 ? (
                 <p className="task-detail-empty">Esta tarea no tiene checklist.</p>
               ) : (
-                checklist.map((item, index) => {
+                editableChecklist.map((item, index) => {
                   const state = getChecklistItemState(item)
                   const note = getChecklistItemNote(item)
 
@@ -134,7 +292,44 @@ export default function TaskDetailPanel({
                     <article key={`${task.id}-check-${index}`} className={`task-check-item is-${state.key}`}>
                       <div className="task-check-main">
                         <p className="task-check-title"><CheckSquare size={15} /> {getChecklistItemTitle(item, index)}</p>
-                        {note ? <p className="task-check-note">{note}</p> : null}
+
+                        <div className="task-check-actions" role="group" aria-label="Estado del pendiente">
+                          <button
+                            type="button"
+                            className={`task-check-action-btn ${state.key === 'pending' ? 'is-active' : ''}`}
+                            onClick={() => handleChecklistStateChange(index, 'pending')}
+                          >
+                            Pendiente
+                          </button>
+                          <button
+                            type="button"
+                            className={`task-check-action-btn ${state.key === 'done' ? 'is-active' : ''}`}
+                            onClick={() => handleChecklistStateChange(index, 'done')}
+                          >
+                            Completado
+                          </button>
+                          <button
+                            type="button"
+                            className={`task-check-action-btn ${state.key === 'blocked' ? 'is-active' : ''}`}
+                            onClick={() => handleChecklistStateChange(index, 'blocked')}
+                          >
+                            Bloqueado
+                          </button>
+                        </div>
+
+                        {state.key === 'blocked' ? (
+                          <input
+                            type="text"
+                            value={note}
+                            className="task-check-blocked-input"
+                            maxLength={80}
+                            placeholder="Motivo breve del bloqueo"
+                            onChange={(event) => handleChecklistBlockedNoteChange(index, event.target.value)}
+                            aria-label={`Motivo de bloqueo para ${getChecklistItemDescription(item) || `item ${index + 1}`}`}
+                          />
+                        ) : null}
+
+                        {state.key !== 'blocked' && note ? <p className="task-check-note">{note}</p> : null}
                       </div>
                       <span className="task-check-state">{state.label}</span>
                     </article>
@@ -154,8 +349,8 @@ export default function TaskDetailPanel({
           <button type="button" className="task-detail-btn task-detail-btn-muted" onClick={onClose}>
             Cancelar
           </button>
-          <button type="button" className="task-detail-btn task-detail-btn-primary" onClick={onClose}>
-            Guardar cambios
+          <button type="button" className="task-detail-btn task-detail-btn-primary" onClick={handleSaveChecklist} disabled={isSaving}>
+            {isSaving ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </footer>
       </aside>

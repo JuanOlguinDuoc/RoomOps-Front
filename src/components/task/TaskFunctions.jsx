@@ -35,6 +35,14 @@ export const getCurrentTaskTimestamps = () => {
   }
 }
 
+export const normalizeTaskText = (value = '') => {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
 export const normalizeTimeValue = (value = '') => {
   const raw = String(value || '').trim()
   if (!raw) return ''
@@ -97,7 +105,9 @@ export const updateTaskLocal = (id, payload) => {
     dueTime: payload.dueTime || null,
     apartmentId: payload.apartmentId != null ? Number(payload.apartmentId) : null,
     assignedUserId: payload.assignedUserId != null ? Number(payload.assignedUserId) : null,
-    statusId: payload.statusId != null ? Number(payload.statusId) : null
+    statusId: payload.statusId != null ? Number(payload.statusId) : null,
+    estadoId: payload.estadoId != null ? Number(payload.estadoId) : (payload.statusId != null ? Number(payload.statusId) : null),
+    checklist: Array.isArray(payload.checklist) ? payload.checklist : tasks[idx].checklist
   }
 
   saveLocalTasks(tasks)
@@ -132,6 +142,47 @@ export const getTaskDate = (task = {}) => task.fecha ?? task.date ?? ''
 export const getTaskDueTime = (task = {}) => {
   const raw = task.dueTime ?? task.due_time ?? task.dueDateTime ?? ''
   return normalizeTimeValue(raw)
+}
+
+export const getChecklistOverallStatusKey = (checklist = []) => {
+  const items = Array.isArray(checklist) ? checklist : []
+  if (items.length === 0) return 'pending'
+
+  const normalizedStates = items.map((item) => normalizeTaskText(item?.estado || item?.status || item?.checklistStatus || item?.estadoChecklist || ''))
+
+  if (normalizedStates.some((state) => state.includes('bloquead') || state.includes('blocked'))) {
+    return 'blocked'
+  }
+
+  if (normalizedStates.every((state) => state.includes('hecho') || state.includes('complet') || state === 'done')) {
+    return 'done'
+  }
+
+  if (normalizedStates.some((state) => state.includes('hecho') || state.includes('complet') || state === 'done')) {
+    return 'in-progress'
+  }
+
+  return 'pending'
+}
+
+export const resolveTaskStatusIdFromChecklist = (statuses = [], checklist = [], fallbackStatusId = null) => {
+  const targetKey = getChecklistOverallStatusKey(checklist)
+  const matcherByKey = {
+    blocked: (label) => label.includes('bloque'),
+    done: (label) => label.includes('hecho') || label.includes('complet'),
+    'in-progress': (label) => label.includes('progreso') || label.includes('curso'),
+    pending: (label) => label.includes('pendiente') || label.includes('por hacer')
+  }
+
+  const matcher = matcherByKey[targetKey]
+  const matchedStatus = Array.isArray(statuses)
+    ? statuses.find((status) => {
+      const normalizedLabel = normalizeTaskText(status?.nombre || status?.name || '')
+      return matcher?.(normalizedLabel)
+    })
+    : null
+
+  return matchedStatus?.id != null ? Number(matchedStatus.id) : fallbackStatusId
 }
 
 export const isTrabajadorUser = (user = {}) => {

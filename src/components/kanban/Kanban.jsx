@@ -19,12 +19,14 @@ import { getStatuses } from '../../service/statusService'
 import { isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers } from '../../service/localStorage'
 import {
 	getLocalTasks,
+	updateTaskLocal,
 	getTaskApartmentId,
 	getTaskAssignedUserId,
 	getTaskStatusId,
 	getTaskDate,
 	getTaskDueTime,
-	getTaskType
+	getTaskType,
+	resolveTaskStatusIdFromChecklist
 } from '../task/TaskFunctions'
 import { TaskDetailPanel } from '../taskDetail'
 import './kanban.css'
@@ -100,6 +102,9 @@ function DraggableCard({ task, apartmentNameById, onOpenTaskDetail }) {
 	const dateLabel = getTaskDate(task)
 	const typeLabel = getTaskType(task)
 	const checklistProgress = getChecklistProgress(task)
+	const progressPercentage = checklistProgress.total > 0
+		? Math.round((checklistProgress.completed / checklistProgress.total) * 100)
+		: 0
 
 	return (
 		<div
@@ -130,9 +135,21 @@ function DraggableCard({ task, apartmentNameById, onOpenTaskDetail }) {
 
 			<h3 className="kanban-card-title">{task.titulo || 'Tarea sin titulo'}</h3>
 
+			<div className="kanban-progress-wrap" aria-label={`Progreso ${checklistProgress.completed} de ${checklistProgress.total || 0} items`}>
+				<div className="kanban-progress-track">
+					<div
+						className="kanban-progress-fill"
+						style={{ width: `${progressPercentage}%` }}
+					/>
+				</div>
+			</div>
+
 			<div className="kanban-card-footer">
+				<div className="kanban-card-meta">
+					<span className="kanban-progress-label">PROGRESO</span>
+					<span className="kanban-checklist">{checklistProgress.completed}/{checklistProgress.total || 0} ITEMS</span>
+				</div>
 				<span className="kanban-date"><CalendarDays size={13} /> {dateLabel || 'Sin fecha'}</span>
-				<span className="kanban-checklist"><ListChecks size={13} /> {checklistProgress.completed}/{checklistProgress.total || 0}</span>
 			</div>
 		</div>
 	)
@@ -392,6 +409,53 @@ export default function Kanban() {
 		setSelectedTaskDetail(null)
 	}
 
+	const handleSaveTaskChecklist = async (task, checklistItems = []) => {
+		const taskId = task?.id
+		if (taskId == null) return false
+		const nextStatusId = resolveTaskStatusIdFromChecklist(statuses, checklistItems, getTaskStatusId(task))
+
+		const payload = {
+			titulo: task?.titulo || '',
+			descripcion: task?.descripcion || '',
+			tipo: getTaskType(task) || '',
+			prioridad: task?.prioridad ?? task?.priority ?? '',
+			fecha: getTaskDate(task) || null,
+			dueTime: getTaskDueTime(task) || null,
+			apartmentId: getTaskApartmentId(task),
+			assignedUserId: getTaskAssignedUserId(task),
+			statusId: nextStatusId,
+			estadoId: nextStatusId,
+			checklist: Array.isArray(checklistItems) ? checklistItems : []
+		}
+
+		try {
+			await updateTask(taskId, payload)
+			setTasks((prevTasks) =>
+				prevTasks.map((currentTask) =>
+					Number(currentTask.id) === Number(taskId)
+						? { ...currentTask, checklist: payload.checklist, statusId: nextStatusId, estadoId: nextStatusId }
+						: currentTask
+				)
+			)
+			return true
+		} catch (error) {
+			const localResult = updateTaskLocal(taskId, payload)
+			if (localResult?.success) {
+				setTasks((prevTasks) =>
+					prevTasks.map((currentTask) =>
+						Number(currentTask.id) === Number(taskId)
+							? { ...currentTask, checklist: payload.checklist, statusId: nextStatusId, estadoId: nextStatusId }
+							: currentTask
+					)
+				)
+				return true
+			}
+
+			console.error('Error actualizando checklist:', error)
+			return false
+		}
+	}
+
 	return (
 		<DndContext
 			sensors={sensors}
@@ -441,6 +505,7 @@ export default function Kanban() {
 				apartmentNameById={apartmentNameById}
 				userNameById={userNameById}
 				statusNameById={statusLabelById}
+				onSaveChecklist={handleSaveTaskChecklist}
 			/>
 		</DndContext>
 	)
