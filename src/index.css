@@ -78,6 +78,162 @@ body {
   background: var(--roomops-app-bg);
 }
 
+html.theme-logo-dark {
+  --roomops-bg-1: #0F0A1E;
+  --roomops-bg-2: #161129;
+  --roomops-bg-3: #3B2D60;
+  --roomops-surface: #1C1633;
+  --roomops-surface-alt: #2D244F;
+  --roomops-border: rgba(139, 92, 246, 0.25);
+  --roomops-text: #F5F3FF;
+  --roomops-text-muted: #A5B4FC;
+  --roomops-accent: #A78BFA;
+  --roomops-accent-soft: rgba(167, 139, 250, 0.15);
+  --roomops-secondary: #6366F1;
+  --roomops-app-bg: linear-gradient(to bottom right, #0F0A1E 0%, #7b74bb 100%);
+
+  /* Status tokens with stronger contrast on deep-purple surfaces */
+  --bs-success: #34D399;
+  --bs-success-rgb: 52, 211, 153;
+  --bs-danger: #FB7185;
+  --bs-danger-rgb: 251, 113, 133;
+  --cui-success: #34D399;
+  --cui-success-rgb: 52, 211, 153;
+  --cui-danger: #FB7185;
+  --cui-danger-rgb: 251, 113, 133;
+
+  --text: var(--roomops-text-muted);
+  --text-h: var(--roomops-text);
+  --bg: var(--roomops-bg-1);
+  --border: var(--roomops-border);
+  --accent: var(--roomops-accent);
+  --bs-border-color: var(--roomops-border);
+  --cui-border-color: var(--roomops-border);
+}
+
+html.theme-logo-dark .card,
+html.theme-logo-dark .modal-content,
+html.theme-logo-dark .offcanvas,
+html.theme-logo-dark .dropdown-menu {
+  background-color: var(--roomops-surface);
+  border-color: var(--roomops-border);
+  color: var(--roomops-text);
+}
+
+html.theme-logo-dark .card-header,
+html.theme-logo-dark .card-footer,
+html.theme-logo-dark .table-light,
+html.theme-logo-dark .bg-light {
+  background-color: var(--roomops-surface-alt) !important;
+  border-color: var(--roomops-border) !important;
+  color: var(--roomops-text);
+}
+
+html.theme-logo-dark .table {
+  --bs-table-color: var(--roomops-text);
+  --bs-table-bg: var(--roomops-surface);
+  --bs-table-border-color: var(--roomops-border);
+  --bs-table-striped-bg: rgba(167, 139, 250, 0.08);
+  --bs-table-striped-color: var(--roomops-text);
+  --bs-table-hover-bg: rgba(167, 139, 250, 0.14);
+  --bs-table-hover-color: var(--roomops-text);
+}
+
+html.theme-logo-dark .table > :not(caption) > * > * {
+  border-bottom-color: var(--roomops-border);
+}
+
+html.theme-logo-dark .border,
+html.theme-logo-dark .border-top,
+html.theme-logo-dark .border-end,
+html.theme-logo-dark .border-bottom,
+html.theme-logo-dark .border-start {
+  border-color: var(--roomops-border) !important;
+}
+
+html.theme-logo-dark .btn-outline-secondary {
+  --bs-btn-color: var(--roomops-text-muted);
+  --bs-btn-border-color: var(--roomops-border);
+  --bs-btn-hover-color: #120f24;
+  --bs-btn-hover-bg: var(--roomops-accent);
+  --bs-btn-hover-border-color: var(--roomops-accent);
+  --bs-btn-active-color: #120f24;
+  --bs-btn-active-bg: var(--roomops-accent);
+  --bs-btn-active-border-color: var(--roomops-accent);
+}
+
+html.theme-logo-dark .btn-outline-info,
+html.theme-logo-dark .btn-outline-warning,
+html.theme-logo-dark .btn-outline-success,
+html.theme-logo-dark .btn-outline-danger {
+  --bs-btn-border-color: var(--roomops-accent);
+  --bs-btn-color: var(--roomops-accent);
+  --bs-btn-hover-color: #120f24;
+  --bs-btn-hover-bg: var(--roomops-accent);
+  --bs-btn-hover-border-color: var(--roomops-accent);
+  --bs-btn-active-color: #120f24;
+  --bs-btn-active-bg: var(--roomops-accent);
+  --bs-btn-active-border-color: var(--roomops-accent);
+}
+
+html.theme-logo-dark .btn-dark {
+  --bs-btn-bg: var(--roomops-surface-alt);
+  --bs-btn-border-color: var(--roomops-border);
+  --bs-btn-color: var(--roomops-text);
+  --bs-btn-hover-bg: var(--roomops-accent);
+  --bs-btn-hover-border-color: var(--roomops-accent);
+  --bs-btn-hover-color: #120f24;
+  --bs-btn-active-bg: var(--roomops-accent);
+  --bs-btn-active-border-color: var(--roomops-accent);
+  --bs-btn-active-color: #120f24;
+}
+
+html.theme-logo-dark .btn-outline-light {
+  --bs-btn-color: var(--roomops-text);
+  --bs-btn-border-color: var(--roomops-border);
+  --bs-btn-hover-color: #120f24;
+  --bs-btn-hover-bg: var(--roomops-accent);
+  --bs-btn-hover-border-color: var(--roomops-accent);
+  --bs-btn-active-color: #120f24;
+  --bs-btn-active-bg: var(--roomops-accent);
+  --bs-btn-active-border-color: var(--roomops-accent);
+}
+
+html.theme-logo-dark .bg-white {
+  background-color: var(--roomops-surface-alt) !important;
+  border-color: var(--roomops-border) !important;
+  color: var(--roomops-text) !important;
+}
+
+html.theme-logo-dark .text-dark {
+  color: var(--roomops-text) !important;
+}
+
+html.theme-logo-dark .form-control,
+html.theme-logo-dark .form-select,
+html.theme-logo-dark .input-group-text {
+  background-color: var(--roomops-surface-alt);
+  border-color: var(--roomops-border);
+  color: var(--roomops-text);
+}
+
+html.theme-logo-dark .form-control::placeholder,
+html.theme-logo-dark .form-select::placeholder {
+  color: var(--roomops-text-muted);
+}
+
+html.theme-logo-dark .pagination .page-link {
+  background-color: var(--roomops-surface);
+  border-color: var(--roomops-border);
+  color: var(--roomops-text);
+}
+
+html.theme-logo-dark .pagination .page-item.active .page-link {
+  background-color: var(--roomops-accent);
+  border-color: var(--roomops-accent);
+  color: #120f24;
+}
+
 #root {
   width: 100%;
   max-width: 100%;

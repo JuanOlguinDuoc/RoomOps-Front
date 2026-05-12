@@ -27,8 +27,7 @@
   --cui-sidebar-nav-link-icon-color: var(--roomops-text-muted);
   --cui-sidebar-nav-link-hover-bg: var(--roomops-accent-soft);
   --cui-sidebar-nav-link-hover-color: var(--roomops-text);
-  background:
-    linear-gradient(180deg, rgba(30, 83, 110, 0.96) 0%, rgba(26, 51, 74, 0.98) 58%, rgba(26, 51, 74, 1) 100%) !important;
+  background: linear-gradient(180deg, var(--roomops-bg-2) 0%, var(--roomops-bg-1) 62%, var(--roomops-bg-1) 100%) !important;
   border-right: 1px solid var(--roomops-border) !important;
   color: var(--roomops-text-muted);
 }
@@ -82,7 +81,7 @@
 
 .roomops-sidebar .sidebar-nav .nav-link.active,
 .roomops-sidebar .sidebar-nav .nav-link:focus-visible {
-  background-color: rgba(90, 165, 205, 0.32);
+  background-color: var(--roomops-accent-soft);
   color: var(--roomops-accent);
 }
 
@@ -95,13 +94,13 @@
 
 .roomops-sidebar .sidebar-nav .nav-link:hover {
   background-color: var(--roomops-accent);
-  color: #052937;
-  box-shadow: 0 0 0 3px rgba(39, 230, 236, 0.38), 0 0 12px rgba(39, 230, 236, 0.32);
+  color: #120f24;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.38), 0 0 12px rgba(167, 139, 250, 0.32);
 }
 
 .roomops-sidebar .sidebar-nav .nav-link:hover .nav-icon,
 .roomops-sidebar .sidebar-nav .nav-link:hover svg {
-  color: #052937;
+  color: #120f24;
 }
 
 /* ── Tablet (768-991px): CoreUI trata <992px como mobile y oculta el sidebar.
