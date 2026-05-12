@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Search, CalendarDays, ListChecks } from 'lucide-react'
+import { Search, CalendarDays, ListChecks, Eye } from 'lucide-react'
 import {
 	DndContext,
 	closestCorners,
@@ -26,6 +26,7 @@ import {
 	getTaskDueTime,
 	getTaskType
 } from '../task/TaskFunctions'
+import { TaskDetailPanel } from '../taskDetail'
 import './kanban.css'
 
 const BOARD_COLUMNS = [
@@ -71,7 +72,7 @@ const getChecklistProgress = (task) => {
 }
 
 // Componente para tarjeta draggable
-function DraggableCard({ task, apartmentNameById }) {
+function DraggableCard({ task, apartmentNameById, onOpenTaskDetail }) {
 	const {
 		attributes,
 		listeners,
@@ -110,7 +111,21 @@ function DraggableCard({ task, apartmentNameById }) {
 		>
 			<div className="kanban-card-header">
 				<span className="kanban-chip">{apartmentName.toUpperCase()}</span>
-				<span className="kanban-type">{typeLabel || 'Sin tipo'}</span>
+				<div className="kanban-card-actions">
+					<span className="kanban-type">{typeLabel || 'Sin tipo'}</span>
+					<button
+						type="button"
+						className="kanban-detail-btn"
+						onPointerDown={(event) => event.stopPropagation()}
+						onClick={(event) => {
+							event.stopPropagation()
+							onOpenTaskDetail(task)
+						}}
+						aria-label={`Ver detalle de ${task.titulo || 'tarea'}`}
+					>
+						<Eye size={13} />
+					</button>
+				</div>
 			</div>
 
 			<h3 className="kanban-card-title">{task.titulo || 'Tarea sin titulo'}</h3>
@@ -124,7 +139,7 @@ function DraggableCard({ task, apartmentNameById }) {
 }
 
 // Componente para columna droppable
-function DroppableColumn({ column, items, apartmentNameById }) {
+function DroppableColumn({ column, items, apartmentNameById, onOpenTaskDetail }) {
 	const { setNodeRef, isOver } = useDroppable({
 		id: `column-${column.key}`,
 		data: {
@@ -152,6 +167,7 @@ function DroppableColumn({ column, items, apartmentNameById }) {
 							key={task.id}
 							task={task}
 							apartmentNameById={apartmentNameById}
+							onOpenTaskDetail={onOpenTaskDetail}
 						/>
 					))
 				)}
@@ -179,6 +195,8 @@ export default function Kanban() {
 	const [statuses, setStatuses] = useState([])
 	const [loading, setLoading] = useState(false)
 	const [searchTerm, setSearchTerm] = useState('')
+	const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
+	const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { distance: 8 }),
@@ -364,6 +382,16 @@ export default function Kanban() {
 		}
 	}
 
+	const handleOpenTaskDetail = (task) => {
+		setSelectedTaskDetail(task)
+		setIsTaskDetailOpen(true)
+	}
+
+	const handleCloseTaskDetail = () => {
+		setIsTaskDetailOpen(false)
+		setSelectedTaskDetail(null)
+	}
+
 	return (
 		<DndContext
 			sensors={sensors}
@@ -398,12 +426,22 @@ export default function Kanban() {
 									column={column}
 									items={items}
 									apartmentNameById={apartmentNameById}
+									onOpenTaskDetail={handleOpenTaskDetail}
 								/>
 							)
 						})}
 					</section>
 				)}
 			</div>
+
+			<TaskDetailPanel
+				isOpen={isTaskDetailOpen}
+				task={selectedTaskDetail}
+				onClose={handleCloseTaskDetail}
+				apartmentNameById={apartmentNameById}
+				userNameById={userNameById}
+				statusNameById={statusLabelById}
+			/>
 		</DndContext>
 	)
 }

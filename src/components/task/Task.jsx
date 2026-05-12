@@ -32,6 +32,7 @@ import {
  isTrabajadorUser
 } from './TaskFunctions'
 import { openCreateTaskModal, openEditTaskModal } from './TaskForm'
+import { TaskDetailPanel } from '../taskDetail'
 
 
 
@@ -62,6 +63,8 @@ export default function Task() {
  const [selectedType, setSelectedType] = useState('Todos')
  const [selectedAssignee, setSelectedAssignee] = useState("Todos")
  const [selectedDate, setSelectedDate] = useState("Todos")
+ const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
+ const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
 
  useEffect(() => {
   refreshAll()
@@ -310,7 +313,13 @@ export default function Task() {
 
 
  const handleViewTask = (task) => {
+  setSelectedTaskDetail(task)
+  setIsTaskDetailOpen(true)
+ }
 
+ const handleCloseTaskDetail = () => {
+  setIsTaskDetailOpen(false)
+  setSelectedTaskDetail(null)
  }
 
  const handleDeleteTask = (task) => {
@@ -668,6 +677,16 @@ export default function Task() {
      </div>
     </CCardBody>
    </CCard>
+
+    <TaskDetailPanel
+     isOpen={isTaskDetailOpen}
+     task={selectedTaskDetail}
+     onClose={handleCloseTaskDetail}
+     apartmentNameById={apartmentNameById}
+     userNameById={userNameById}
+     statusNameById={statusNameById}
+     getDeadLine={getDeadLine}
+    />
   </div>
  )
 }

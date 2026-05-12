@@ -167,6 +167,30 @@
 	gap: 0.5rem;
 }
 
+.kanban-card-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.kanban-detail-btn {
+	width: 1.45rem;
+	height: 1.45rem;
+	border: 1px solid var(--roomops-border);
+	background: rgba(241, 245, 249, 0.95);
+	color: var(--roomops-text-muted);
+	border-radius: 0.3rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+
+.kanban-detail-btn:hover {
+	color: var(--roomops-text);
+	background: #ffffff;
+}
+
 .kanban-chip {
 	display: inline-block;
 	max-width: 68%;
