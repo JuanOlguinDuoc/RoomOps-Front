@@ -27,9 +27,9 @@
   --roomops-accent-soft: rgba(39, 230, 236, 0.22);
   --roomops-secondary: #6F71A1;
   --roomops-app-bg:
-    radial-gradient(circle at 14% -12%, rgba(39, 230, 236, 0.2), transparent 42%),
-    radial-gradient(circle at 92% -20%, rgba(111, 113, 161, 0.24), transparent 40%),
-    linear-gradient(150deg, var(--roomops-bg-3) 0%, var(--roomops-bg-2) 42%, var(--roomops-bg-1) 100%);
+    radial-gradient(circle at 14% -12%, rgba(39, 230, 236, 0.18), transparent 42%),
+    radial-gradient(circle at 92% -20%, rgba(59, 130, 246, 0.16), transparent 40%),
+    linear-gradient(145deg, #dff8ff 0%, #b9ecff 42%, #6fbbe6 100%);
 
   --text: var(--roomops-text-muted);
   --text-h: var(--roomops-text);

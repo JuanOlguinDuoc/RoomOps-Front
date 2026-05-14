@@ -9,6 +9,7 @@ import Login from './components/login/Login.jsx'
 import Task from './components/task/Task.jsx'
 import Kanban from './components/kanban/Kanban.jsx'
 import Apartments from './components/apartments/Apartments.jsx'
+import Home from './components/home/Home.jsx'
 import { isUserLoggedIn } from './service/localStorage'
 import modelo2Logo from './assets/icons/modelo 2.svg'
 import './App.css'
@@ -78,14 +79,6 @@ function Layout() {
         <Outlet />
       </main>
     </div>
-  )
-}
-
-function Home() {
-  return (
-    <>
-      <h1>Inicio</h1>
-    </>
   )
 }
 

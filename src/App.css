@@ -11,9 +11,9 @@
   top: 0.9rem;
   right: 1rem;
   z-index: 1200;
-  border: 1px solid var(--roomops-border);
-  background: var(--roomops-surface);
-  color: var(--roomops-text);
+  border: 1px solid rgba(226, 232, 240, 1);
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
   border-radius: 999px;
   padding: 0.5rem 0.9rem;
   font-size: 0.8rem;
@@ -25,7 +25,7 @@
 
 .theme-toggle:hover,
 .theme-toggle:focus-visible {
-  background: var(--roomops-surface-alt);
+  background: rgba(241, 245, 249, 0.98);
   outline: none;
 }
 
@@ -33,9 +33,9 @@
   flex: 1;
   min-width: 0;
   padding: 1rem 0.75rem;
-  background: linear-gradient(180deg, var(--roomops-bg-2), var(--roomops-bg-1));
-  color: var(--roomops-text);
-  border-left: 1px solid var(--roomops-border);
+  background: linear-gradient(180deg, #d9f3ff 0%, #8ecbf0 100%);
+  color: #0f172a;
+  border-left: 1px solid rgba(226, 232, 240, 1);
 }
 
 html.theme-logo-dark .app-shell {
@@ -44,6 +44,8 @@ html.theme-logo-dark .app-shell {
 
 html.theme-logo-dark .app-main {
   background: transparent;
+  color: var(--roomops-text);
+  border-left-color: var(--roomops-border);
 }
 
 /* Header mobile (menu hamburguesa + logo) */
@@ -109,8 +111,8 @@ html.theme-logo-dark .app-main {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background: linear-gradient(90deg, var(--roomops-bg-1), var(--roomops-bg-2));
-    border-bottom: 1px solid var(--roomops-border);
+    background: linear-gradient(90deg, #dff8ff, #b9ecff);
+    border-bottom: 1px solid rgba(226, 232, 240, 1);
     position: sticky;
     top: 0;
     z-index: 200;
@@ -124,4 +126,19 @@ html.theme-logo-dark .app-main {
     min-height: calc(100svh - 3.25rem);
     padding: 1rem 0.75rem;
   }
+}
+
+html.theme-logo-dark .theme-toggle {
+  background: var(--roomops-surface);
+  color: var(--roomops-text);
+  border-color: var(--roomops-border);
+}
+
+html.theme-logo-dark .theme-toggle:hover,
+html.theme-logo-dark .theme-toggle:focus-visible {
+  background: var(--roomops-surface-alt);
+}
+
+html.theme-logo-dark .app-mobile-header {
+  background: linear-gradient(90deg, var(--roomops-bg-1), var(--roomops-bg-2));
 }
