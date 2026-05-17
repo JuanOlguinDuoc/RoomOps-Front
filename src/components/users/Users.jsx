@@ -30,13 +30,16 @@ import {
   getAllUsers, createUserAdmin, updateUserAdmin,
   isUserLoggedIn, isUserAdmin, isUserSupervisor
 } from '../../service/localStorage'
+import {
+  canViewUsers,
+  canManageUsers
+} from '../../service/permissions'
 import { getUsers, createUser, updateUser, updateUserEstado } from '../../service/userService'
 
 export default function Users() {
-  // Control de acceso: solo usuarios autenticados con rol admin o supervisor.
+  // Control de acceso: solo usuarios que puedan ver usuarios
   const isLoggedIn = isUserLoggedIn()
-  const isAdmin = isUserAdmin()
-  const canAccess = isAdmin || isUserSupervisor()
+  const canAccess = canViewUsers()
 
   // Si no está logueado, redirigir al login
   if (!isLoggedIn) {
@@ -374,7 +377,7 @@ export default function Users() {
         {/* Encabezado principal. */}
         <CCardHeader className="bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
           <h4 className="mb-0 fw-bold">Gestión de Usuarios</h4>
-          {isAdmin && (
+          {canManageUsers() && (
             <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
               <CIcon icon={cilPlus} /> Añadir usuario
             </CButton>
@@ -462,7 +465,7 @@ export default function Users() {
                 <CTableHeaderCell className="text-start">Usuario</CTableHeaderCell>
                 <CTableHeaderCell>Rol</CTableHeaderCell>
                 <CTableHeaderCell className="d-none d-md-table-cell">Estado</CTableHeaderCell>
-                {isAdmin && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
+                {canManageUsers() && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
               </CTableRow>
             </CTableHead>
             <CTableBody>
@@ -497,7 +500,7 @@ export default function Users() {
                     </CTableDataCell>
 
                     {/* Columna de acciones. */}
-                    {isAdmin && (
+                    {canManageUsers() && (
                     <CTableDataCell className="d-none d-sm-table-cell">
                       <div className="users-actions d-flex justify-content-center gap-2">
                         <CButton

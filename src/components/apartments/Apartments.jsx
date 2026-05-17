@@ -33,6 +33,10 @@ import {
   getAllApartments, createApartmentLocal, updateApartmentLocal, updateApartmentEstadoLocal
 } from '../../service/localStorage'
 import {
+  canViewApartments,
+  canManageApartments
+} from '../../service/permissions'
+import {
   getApartments,
   createApartment,
   updateApartment,
@@ -41,10 +45,10 @@ import {
   from '../../service/apartmentService'
 
 export default function Apartments() {
-  // Control de acceso: solo usuarios autenticados con rol admin o supervisor.
+  // Control de acceso: solo usuarios que puedan ver apartamentos
   const isLoggedIn = isUserLoggedIn()
-  const isAdmin = isUserAdmin()
-  const canAccess = isAdmin || isUserSupervisor()
+  const canAccess = canViewApartments()
+  const canManage = canManageApartments()
 
   if (!isLoggedIn) {
     return <Navigate to="/login?redirect=/apartments" replace />
@@ -355,7 +359,7 @@ export default function Apartments() {
         {/* Encabezado principal. */}
         <CCardHeader className="bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
           <h4 className="mb-0 fw-bold">Gestión de Apartamentos</h4>
-          {isAdmin && (
+          {canManage && (
             <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
               <CIcon icon={cilPlus} /> Añadir Apartamento
             </CButton>
@@ -442,7 +446,7 @@ export default function Apartments() {
                     <CTableHeaderCell className="text-start">Apartamento</CTableHeaderCell>
                     <CTableHeaderCell>Piso</CTableHeaderCell>
                   <CTableHeaderCell className="d-none d-md-table-cell">Disponibilidad</CTableHeaderCell>
-                  {isAdmin && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
+                  {canManage && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
                 </CTableRow>
               </CTableHead>
               <CTableBody>
@@ -487,7 +491,7 @@ export default function Apartments() {
                       </CTableDataCell>
 
                       {/* Columna de acciones. */}
-                      {isAdmin && (
+                      {canManage && (
                         <CTableDataCell className="d-none d-sm-table-cell">
                           <div className="users-actions d-flex justify-content-center gap-2">
                             <CButton

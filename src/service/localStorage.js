@@ -163,9 +163,26 @@ export const getCurrentUser = () => {
     const sessionUser = JSON.parse(localStorage.getItem('currentUser')) || null;
     if (!sessionUser) return null;
 
+    const token = localStorage.getItem(TOKEN_KEY);
+    const payload = decodeJwtPayload(token);
+    const fallbackRole = payload?.role
+      || payload?.rol
+      || payload?.userRole
+      || (Array.isArray(payload?.roles) ? payload.roles[0] : null)
+      || (Array.isArray(payload?.authorities) ? payload.authorities[0] : null)
+      || null;
+
+    const fallbackRoleNormalized = String(fallbackRole || '').replace(/^ROLE_/, '').toUpperCase();
+    const mergedSession = {
+      ...sessionUser,
+      id: sessionUser?.id ?? payload?.userId ?? payload?.id ?? payload?.uid ?? null,
+      email: sessionUser?.email || payload?.email || payload?.sub || '',
+      role: sessionUser?.role || fallbackRoleNormalized || ''
+    };
+
     // Si ya es un objeto normalizado guardado por setUserSession, devolverlo directamente
-    if (sessionUser.nombre || sessionUser.email) {
-      return sessionUser;
+    if (mergedSession.nombre || mergedSession.email) {
+      return mergedSession;
     }
 
     // Fallback: intentar buscar en registeredUsers por email
@@ -180,7 +197,7 @@ export const getCurrentUser = () => {
       };
     }
 
-    return sessionUser;
+    return mergedSession;
   }
   return null;
 };
@@ -189,12 +206,14 @@ export const getCurrentUser = () => {
 export const getUserRole = () => {
   const user = getCurrentUser();
   if (!user) return null;
+
+  const normalizeRole = (value) => String(value || '').trim().toUpperCase().replace(/^ROLE_/, '');
   
   // El rol puede venir del objeto role completo o como string
   if (typeof user.role === 'object' && user.role !== null) {
-    return user.role.name || user.role.id || null;
+    return normalizeRole(user.role.name || user.role.id || null);
   }
-  return user.role || null;
+  return normalizeRole(user.role || null);
 };
 
 // Función para verificar si el usuario es ADMINISTRADOR
@@ -206,13 +225,13 @@ export const isUserAdmin = () => {
 // Función para verificar si el usuario es supervisor
 export const isUserSupervisor = () => {
   const role = getUserRole();
-  return role?.toUpperCase() === 'SUPERVISOR';
+  return role === 'SUPERVISOR';
 };
 
 // Función para verificar si el usuario es trabajador
 export const isUserTrabajador = () => {
   const role = getUserRole();
-  return role === 'trabajador';
+  return role === 'TRABAJADOR' || role === 'WORKER';
 };
 
 // Función para registrar un nuevo usuario

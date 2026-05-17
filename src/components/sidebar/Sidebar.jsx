@@ -7,11 +7,23 @@ import modelo1Logo from '../../assets/icons/modelo 1.svg'
 import modelo2Logo from '../../assets/icons/modelo 2.svg'
 import { confirmLogout } from '../../utils/alert'
 import { isUserAdmin, isUserSupervisor } from '../../service/localStorage'
+import {
+  canViewUsers,
+  canViewApartments,
+  canViewAnyTasks,
+  canViewAnyKanban,
+  canViewAdminDashboard
+} from '../../service/permissions'
 import './sidebar.css'
 
 
 export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onNarrowChange, mobileOpen, onMobileClose }) {
- const canViewUsers = isUserAdmin() || isUserSupervisor()
+ // Permisos según roles
+ const showUsers = canViewUsers()
+ const showApartments = canViewApartments()
+ const showTasks = canViewAnyTasks()
+ const showKanban = canViewAnyKanban()
+ const canAccessAdminDashboard = canViewAdminDashboard()
 
  const [internalNarrow, setInternalNarrow] = useState(true)
  const narrow = controlledNarrow ?? internalNarrow
@@ -84,11 +96,11 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
        className="nav-link"
        onClick={isMobileView ? onMobileClose : undefined}
       >
-       <CIcon customClassName="nav-icon" icon={cilSpeedometer} /> Dashboard
+       <CIcon customClassName="nav-icon" icon={cilSpeedometer} /> {canAccessAdminDashboard ? 'Dashboard' : 'Inicio'}
       </NavLink>
      </CNavItem>
 
-     {canViewUsers && (
+     {showUsers && (
       <CNavItem>
        <NavLink
         to="/users"
@@ -99,7 +111,8 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
        </NavLink>
       </CNavItem>
      )}
-     {canViewUsers && (
+
+     {showApartments && (
       <CNavItem>
        <NavLink
         to="/apartments"
@@ -110,7 +123,8 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
        </NavLink>
       </CNavItem>
      )}
-     {canViewUsers && (
+
+     {showTasks && (
       <CNavItem>
        <NavLink
         to="/tasks"
@@ -121,7 +135,8 @@ export default function SidebarUnfoldableExample({ narrow: controlledNarrow, onN
        </NavLink>
       </CNavItem>
      )}
-     {canViewUsers && (
+
+     {showKanban && (
       <CNavItem>
        <NavLink
         to="/kanban"

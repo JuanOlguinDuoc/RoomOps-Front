@@ -56,6 +56,7 @@ export const getPriorityByType = (type = '') => {
   const normalized = String(type || '').trim().toLowerCase()
   if (normalized === 'mantencion') return 'ALTA'
   if (normalized === 'aseo') return 'MEDIA'
+  if (normalized === 'repaso') return 'BAJA'
   return ''
 }
 

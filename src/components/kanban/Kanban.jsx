@@ -18,6 +18,12 @@ import { getUsers } from '../../service/userService'
 import { getStatuses } from '../../service/statusService'
 import { isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers } from '../../service/localStorage'
 import {
+	canViewKanban,
+	canViewPersonalKanban,
+	canViewUsers,
+	filterTasksByPermissions
+} from '../../service/permissions'
+import {
 	getLocalTasks,
 	updateTaskLocal,
 	getTaskApartmentId,
@@ -195,8 +201,9 @@ function DroppableColumn({ column, items, apartmentNameById, onOpenTaskDetail })
 
 export default function Kanban() {
 	const isLoggedIn = isUserLoggedIn()
-	const isAdmin = isUserAdmin()
-	const canAccess = isAdmin || isUserSupervisor()
+	const canViewFullKanban = canViewKanban()
+	const canViewPersonal = canViewPersonalKanban()
+	const canAccess = canViewFullKanban || canViewPersonal
 
 	if (!isLoggedIn) {
 		return <Navigate to="/login?redirect=/kanban" replace />
@@ -224,10 +231,11 @@ export default function Kanban() {
 		const refreshBoard = async () => {
 			setLoading(true)
 
+			const usersFetch = canViewUsers() ? getUsers() : Promise.resolve([])
 			const [tasksResult, apartmentsResult, usersResult, statusesResult] = await Promise.allSettled([
 				getTasks(),
 				getApartments(),
-				getUsers(),
+				usersFetch,
 				getStatuses()
 			])
 
@@ -294,9 +302,13 @@ export default function Kanban() {
 
 	const filteredTasks = useMemo(() => {
 		const term = normalizeText(searchTerm)
-		if (!term) return tasks
+		
+		// Aplicar filtro de permisos
+		const permittedTasks = filterTasksByPermissions(tasks)
+		
+		if (!term) return permittedTasks
 
-		return tasks.filter((task) => {
+		return permittedTasks.filter((task) => {
 			const apartmentId = getTaskApartmentId(task)
 			const apartmentName = apartmentId != null ? (apartmentNameById.get(Number(apartmentId)) || `Apto ${apartmentId}`) : 'Sin apartamento'
 			const title = task?.titulo || ''

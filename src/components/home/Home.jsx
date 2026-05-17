@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import {
 	ArrowUpRight,
 	Bell,
@@ -15,7 +15,13 @@ import { getTasks } from '../../service/taskService'
 import { getUsers } from '../../service/userService'
 import { getApartments } from '../../service/apartmentService'
 import { getStatuses } from '../../service/statusService'
-import { getAllUsers } from '../../service/localStorage'
+import { getAllUsers, isUserLoggedIn } from '../../service/localStorage'
+import {
+	canViewAdminDashboard,
+	filterTasksByPermissions,
+	canViewAnyKanban,
+	canViewUsers
+} from '../../service/permissions'
 import {
 	getChecklistOverallStatusKey,
 	getTaskApartmentId,
@@ -25,8 +31,14 @@ import {
 	getTaskStatusId,
 	getTaskType,
 	getLocalTasks,
-	normalizeTaskText
+	normalizeTaskText,
+	getPriorityByType,
+	updateTaskLocal,
+	resolveTaskStatusIdFromChecklist
 } from '../task/TaskFunctions'
+import { TaskDetailPanel } from '../taskDetail'
+import { updateTask } from '../../service/taskService'
+import { showErrorToast, showSuccessToast } from '../../utils/toast'
 import './Home.css'
 
 const STATUS_ORDER = ['pending', 'in-progress', 'done', 'blocked']
@@ -56,6 +68,12 @@ const STATUS_META = {
 		icon: ShieldAlert,
 		fill: '#F43F5E'
 	}
+}
+
+const PRIORITY_META = {
+	high: { label: 'ALTA', className: 'is-high' },
+	medium: { label: 'MEDIA', className: 'is-medium' },
+	low: { label: 'BAJA', className: 'is-low' }
 }
 
 const PERIOD_OPTIONS = [
@@ -280,13 +298,346 @@ const matchesPeriod = (task, period) => {
 }
 
 const sortByRecentDate = (left, right) => {
-	const leftDate = new Date(`${getTaskDate(left) || ''}T${getTaskDueTime(left) || '00:00'}`)
-	const rightDate = new Date(`${getTaskDate(right) || ''}T${getTaskDueTime(right) || '00:00'}`)
+	const leftDate = new Date(`${getTaskDate(left) || ''}T${getTaskDeadlineTime(left) || '00:00'}`)
+	const rightDate = new Date(`${getTaskDate(right) || ''}T${getTaskDeadlineTime(right) || '00:00'}`)
 
 	const leftTime = Number.isNaN(leftDate.getTime()) ? 0 : leftDate.getTime()
 	const rightTime = Number.isNaN(rightDate.getTime()) ? 0 : rightDate.getTime()
 
 	return rightTime - leftTime || Number(right.id || 0) - Number(left.id || 0)
+}
+
+const getTaskTypeLabel = (task = {}) => {
+	const raw = normalizeTaskText(getTaskType(task) || task?.tipo || task?.type || '')
+	if (raw.includes('mant')) return 'MANTENCION'
+	if (raw.includes('aseo') || raw.includes('limpieza')) return 'ASEO'
+	if (raw.includes('rep')) return 'REPASO'
+	return raw ? String(raw).toUpperCase() : 'SIN TIPO'
+}
+
+const getTaskDeadlineTime = (task = {}) => {
+	const typeLabel = getTaskTypeLabel(task)
+	if (typeLabel === 'ASEO') return '16:00'
+	if (typeLabel === 'REPASO') return '16:00'
+	if (typeLabel === 'MANTENCION') return '15:00'
+	return getTaskDueTime(task) || ''
+}
+
+const getTaskPriorityKey = (task = {}) => {
+	const explicit = normalizeTaskText(task?.prioridad || task?.priority || task?.nivelPrioridad || '')
+	if (explicit.includes('alta') || explicit.includes('high') || explicit === '1') return 'high'
+	if (explicit.includes('baja') || explicit.includes('low') || explicit === '3') return 'low'
+	if (explicit.includes('media') || explicit.includes('medium') || explicit === '2') return 'medium'
+
+	const typeLabel = getTaskTypeLabel(task)
+	if (typeLabel === 'MANTENCION') return 'high'
+	if (typeLabel === 'ASEO') return 'medium'
+	if (typeLabel === 'REPASO') return 'low'
+	return 'low'
+}
+
+const isTaskOverdue = (task = {}, statusById = new Map()) => {
+	const statusKey = getTaskStatusKey(task, statusById)
+	if (statusKey === 'done') return false
+
+	const rawDate = getTaskDate(task)
+	if (!rawDate) return false
+
+	const dueDate = parseLocalDate(rawDate)
+	if (!dueDate) return false
+
+	const [hours, minutes] = String(getTaskDeadlineTime(task) || '23:59').split(':').map((value) => Number(value))
+	dueDate.setHours(Number.isFinite(hours) ? hours : 23, Number.isFinite(minutes) ? minutes : 59, 0, 0)
+
+	return dueDate.getTime() < Date.now()
+}
+
+function WorkerDashboard() {
+	const [tasks, setTasks] = useState([])
+	const [apartments, setApartments] = useState([])
+	const [statuses, setStatuses] = useState([])
+	const [loading, setLoading] = useState(true)
+	const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
+	const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
+
+	const refreshWorkerData = async () => {
+		setLoading(true)
+		const [tasksRes, aptsRes, statusesRes] = await Promise.allSettled([
+			getTasks(),
+			getApartments(),
+			getStatuses()
+		])
+
+		setTasks(tasksRes.status === 'fulfilled' && Array.isArray(tasksRes.value) ? tasksRes.value : [])
+		setApartments(aptsRes.status === 'fulfilled' && Array.isArray(aptsRes.value) ? aptsRes.value : [])
+		setStatuses(statusesRes.status === 'fulfilled' && Array.isArray(statusesRes.value) ? statusesRes.value : [])
+		setLoading(false)
+	}
+
+	useEffect(() => {
+		let isMounted = true
+		const load = async () => {
+			if (!isMounted) return
+			await refreshWorkerData()
+		}
+		load()
+		return () => { isMounted = false }
+	}, [])
+
+	const handleSaveTaskChecklist = async (task, checklistItems = []) => {
+		const taskId = task?.id
+		if (taskId == null) return false
+
+		const typeLabel = getTaskType(task)
+		const nextStatusId = resolveTaskStatusIdFromChecklist(statuses, checklistItems, getTaskStatusId(task))
+		const payload = {
+			titulo: task?.titulo || '',
+			descripcion: task?.descripcion || '',
+			tipo: typeLabel || '',
+			prioridad: task?.prioridad ?? task?.priority ?? getPriorityByType(typeLabel),
+			fecha: getTaskDate(task) || null,
+			dueTime: getTaskDueTime(task) || null,
+			apartmentId: getTaskApartmentId(task),
+			assignedUserId: getTaskAssignedUserId(task),
+			statusId: nextStatusId,
+			estadoId: nextStatusId,
+			checklist: Array.isArray(checklistItems) ? checklistItems : []
+		}
+
+		try {
+			try {
+				await updateTask(taskId, payload)
+			} catch (err) {
+				const localResult = updateTaskLocal(taskId, payload)
+				if (!localResult?.success) {
+					throw new Error(localResult?.message || 'No se pudo actualizar el checklist en localStorage')
+				}
+				showErrorToast('Se uso copia local por falla del servidor')
+			}
+
+			showSuccessToast('Checklist actualizado')
+			await refreshWorkerData()
+			return true
+		} catch (err) {
+			console.error('Error updating worker checklist', err)
+			const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error actualizando checklist'
+			showErrorToast(msg)
+			return false
+		}
+	}
+
+	const statusById = useMemo(() => new Map(statuses.map(s => [normalizeId(s.id), s])), [statuses])
+	const apartmentById = useMemo(() => new Map(apartments.map(a => [normalizeId(a.id), a])), [apartments])
+	const apartmentNameById = useMemo(() => {
+		const map = new Map()
+		apartments.forEach((apartment) => {
+			if (apartment?.id != null) {
+				map.set(Number(apartment.id), apartment.nombre || `Apartamento ${apartment.id}`)
+			}
+		})
+		return map
+	}, [apartments])
+	const statusNameById = useMemo(() => {
+		const map = new Map()
+		statuses.forEach((status) => {
+			if (status?.id != null) {
+				map.set(Number(status.id), status.nombre || `Estado ${status.id}`)
+			}
+		})
+		return map
+	}, [statuses])
+	const myTasks = useMemo(() => filterTasksByPermissions(tasks), [tasks])
+	const canOpenKanban = canViewAnyKanban()
+
+	const pendingCount = useMemo(
+		() => myTasks.filter(t => getTaskStatusKey(t, statusById) === 'pending').length,
+		[myTasks, statusById]
+	)
+	const inProgressCount = useMemo(
+		() => myTasks.filter(t => getTaskStatusKey(t, statusById) === 'in-progress').length,
+		[myTasks, statusById]
+	)
+	const doneTodayCount = useMemo(() => {
+		const today = new Date()
+		return myTasks.filter(t => {
+			if (getTaskStatusKey(t, statusById) !== 'done') return false
+			const d = parseLocalDate(getTaskDate(t))
+			return d && d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate()
+		}).length
+	}, [myTasks, statusById])
+
+	const nextUrgentTask = useMemo(() => {
+		const active = myTasks.filter(t => {
+			const key = getTaskStatusKey(t, statusById)
+			return key === 'pending' || key === 'in-progress'
+		})
+		return active.sort((a, b) => {
+			const aDate = new Date(`${getTaskDate(a) || '9999-12-31'}T${getTaskDeadlineTime(a) || '23:59'}`)
+			const bDate = new Date(`${getTaskDate(b) || '9999-12-31'}T${getTaskDeadlineTime(b) || '23:59'}`)
+			return aDate - bDate
+		})[0] || null
+	}, [myTasks, statusById])
+
+	const recentTasks = useMemo(() => [...myTasks].sort(sortByRecentDate).slice(0, 5), [myTasks])
+	const completedCount = useMemo(() => myTasks.filter((task) => getTaskStatusKey(task, statusById) === 'done').length, [myTasks, statusById])
+	const progressPercent = useMemo(() => {
+		if (!myTasks.length) return 0
+		return Math.round((completedCount / myTasks.length) * 100)
+	}, [completedCount, myTasks])
+
+	const handleOpenTaskDetail = (task) => {
+		setSelectedTaskDetail(task)
+		setIsTaskDetailOpen(true)
+	}
+
+	const handleCloseTaskDetail = () => {
+		setIsTaskDetailOpen(false)
+		setSelectedTaskDetail(null)
+	}
+
+	if (loading) {
+		return (
+			<section className="home-dashboard">
+				<div className="home-loading">Cargando tus tareas...</div>
+			</section>
+		)
+	}
+
+	const urgentApt = nextUrgentTask
+		? getRecordLabel(apartmentById.get(normalizeId(getTaskApartmentId(nextUrgentTask))), '')
+		: ''
+	const urgentStatusKey = nextUrgentTask ? getTaskStatusKey(nextUrgentTask, statusById) : 'pending'
+	const urgentStatusMeta = STATUS_META[urgentStatusKey] || STATUS_META.pending
+	const urgentTypeLabel = nextUrgentTask ? getTaskTypeLabel(nextUrgentTask) : 'SIN TIPO'
+	const urgentPriorityKey = nextUrgentTask ? getTaskPriorityKey(nextUrgentTask) : 'medium'
+	const urgentPriorityMeta = PRIORITY_META[urgentPriorityKey] || PRIORITY_META.medium
+	const urgentIsOverdue = nextUrgentTask ? isTaskOverdue(nextUrgentTask, statusById) : false
+	const urgentDeadline = nextUrgentTask ? getTaskDeadlineTime(nextUrgentTask) : ''
+
+	return (
+		<section className="home-dashboard">
+			<header className="home-topbar">
+				<div>
+					<h1 className="home-title">Dashboard Personal</h1>
+					<p className="home-subtitle">Vista de tus tareas asignadas</p>
+				</div>
+			</header>
+
+			<div className="home-metrics-grid home-worker-metrics">
+				<MetricCard icon={Clock3} title="Pendientes" value={pendingCount} helper="Sin iniciar" tone="slate" />
+				<MetricCard icon={TrendingUp} title="En Progreso" value={inProgressCount} helper="En curso" tone="amber" />
+				<MetricCard icon={CheckCircle2} title="Hechas hoy" value={doneTodayCount} helper="Completadas hoy" tone="green" />
+			</div>
+
+			<div className="home-content-grid home-worker-content-grid">
+				<div className="home-worker-main">
+					<article className="home-panel home-worker-urgent-panel">
+					<div className="home-panel-head">
+						<h2 className="home-panel-title">Próxima tarea urgente</h2>
+					</div>
+					{nextUrgentTask ? (
+						<div className="home-urgent-body">
+							<span className="home-urgent-bar" style={{ backgroundColor: urgentStatusMeta.fill }} />
+							<div className="home-worker-badges-row">
+								<span className="home-badge home-badge-type">{urgentTypeLabel}</span>
+								<span className={`home-badge home-badge-priority ${urgentPriorityMeta.className}`}>{urgentPriorityMeta.label}</span>
+								<span className={`home-badge home-badge-status is-${urgentStatusKey}`}>{urgentStatusMeta.label.toUpperCase()}</span>
+								{urgentIsOverdue && <span className="home-badge home-badge-overdue">ATRASADA</span>}
+							</div>
+							<div className="home-urgent-info">
+								<h3 className="home-urgent-title">{nextUrgentTask.titulo || 'Sin título'}</h3>
+								{urgentApt && <p className="home-urgent-apt">{urgentApt}</p>}
+								<div className="home-urgent-meta">
+									<span className="home-urgent-date">{getTaskDate(nextUrgentTask) ? formatDateLabel(getTaskDate(nextUrgentTask)) : 'Sin fecha'}</span>
+									{urgentDeadline && (
+										<span className="home-urgent-time">
+											<Clock3 size={13} /> Hora límite: <strong>{urgentDeadline}</strong>
+										</span>
+									)}
+									<span className="home-urgent-type-note">Tipo: {urgentTypeLabel}</span>
+									<span className="home-urgent-priority-note">Prioridad: {urgentPriorityMeta.label}</span>
+								</div>
+							</div>
+							<button type="button" className="home-urgent-btn" onClick={() => handleOpenTaskDetail(nextUrgentTask)}>Ver detalle</button>
+						</div>
+					) : (
+						<div className="home-empty-state">
+							<p>No tienes tareas pendientes. ¡Buen trabajo!</p>
+						</div>
+					)}
+					</article>
+
+					<article className="home-panel home-worker-progress-panel">
+						<div className="home-panel-head">
+							<h2 className="home-panel-title">Progreso del día</h2>
+						</div>
+						<div className="home-worker-progress-body">
+							<p className="home-worker-progress-summary">{completedCount} de {myTasks.length} tareas completadas</p>
+							<div className="home-worker-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent} aria-label="Progreso del día">
+								<div className="home-worker-progress-fill" style={{ width: `${progressPercent}%` }} />
+							</div>
+							<span className="home-worker-progress-percent">{progressPercent}%</span>
+						</div>
+					</article>
+				</div>
+
+				<aside className="home-panel home-recent-panel">
+					<div className="home-panel-head home-recent-head">
+						<h2 className="home-panel-title">Mis tareas recientes</h2>
+					</div>
+					<div className="home-recent-list">
+						{recentTasks.length === 0 ? (
+							<div className="home-empty-state"><p>No hay tareas recientes.</p></div>
+						) : (
+							recentTasks.map(task => {
+								const statusKey = getTaskStatusKey(task, statusById)
+								const statusMeta = STATUS_META[statusKey] || STATUS_META.pending
+								const aptLabel = getRecordLabel(apartmentById.get(normalizeId(getTaskApartmentId(task))), '')
+								const typeLabel = getTaskTypeLabel(task)
+								return (
+									<article key={task.id} className="home-recent-item home-recent-clickable" role="button" tabIndex={0} onClick={() => handleOpenTaskDetail(task)} onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && handleOpenTaskDetail(task)}>
+										<span className="home-recent-accent" style={{ backgroundColor: statusMeta.fill }} />
+										<div className="home-recent-body">
+											<div className="home-recent-row">
+												<div>
+													<h3 className="home-recent-title">{task.titulo || 'Sin título'}</h3>
+													<p className="home-recent-meta">{aptLabel || 'Sin apartamento'} · {formatDateLabel(getTaskDate(task))}</p>
+												</div>
+												<span className={`home-badge home-badge-status is-${statusKey}`}>
+													{statusMeta.label.toUpperCase()} · {typeLabel}
+												</span>
+											</div>
+										</div>
+									</article>
+								)
+							})
+						)}
+					</div>
+					<div className="home-worker-actions">
+						<Link to="/tasks" className="home-view-all">Ver mis tareas</Link>
+						{canOpenKanban && <Link to="/kanban" className="home-view-all">Abrir Kanban</Link>}
+					</div>
+				</aside>
+			</div>
+
+			<TaskDetailPanel
+				isOpen={isTaskDetailOpen}
+				task={selectedTaskDetail}
+				onClose={handleCloseTaskDetail}
+				apartmentNameById={apartmentNameById}
+				userNameById={new Map()}
+				statusNameById={statusNameById}
+					onSaveChecklist={handleSaveTaskChecklist}
+				getDeadLine={(taskType) => {
+					const normalizedTaskType = normalizeTaskText(taskType || '')
+					if (normalizedTaskType.includes('aseo') || normalizedTaskType.includes('limpieza')) {
+						return '18:00'
+					}
+					return getTaskDeadlineTime(selectedTaskDetail) || 'Sin hora'
+				}}
+			/>
+		</section>
+	)
 }
 
 function MetricCard({ icon: Icon, title, value, helper, tone = 'neutral' }) {
@@ -303,6 +654,17 @@ function MetricCard({ icon: Icon, title, value, helper, tone = 'neutral' }) {
 }
 
 export default function Home() {
+	const isLoggedIn = isUserLoggedIn()
+	const hasAdminDashboard = canViewAdminDashboard()
+
+	if (!isLoggedIn) {
+		return <Navigate to="/login" replace />
+	}
+
+	// Los trabajadores no pueden ver el dashboard administrativo
+	if (!hasAdminDashboard) {
+		return <WorkerDashboard />
+	}
 	const [tasks, setTasks] = useState([])
 	const [users, setUsers] = useState([])
 	const [apartments, setApartments] = useState([])
@@ -317,9 +679,10 @@ export default function Home() {
 		const loadHomeData = async () => {
 			setLoading(true)
 
+			const usersFetch = canViewUsers() ? getUsers() : Promise.resolve([])
 			const [tasksResult, usersResult, apartmentsResult, statusesResult] = await Promise.allSettled([
 				getTasks(),
-				getUsers(),
+				usersFetch,
 				getApartments(),
 				getStatuses()
 			])
@@ -352,8 +715,11 @@ export default function Home() {
 
 	const visibleTasks = useMemo(() => {
 		const normalizedQuery = normalizeTaskText(searchTerm)
+		
+		// Filtrar tareas por permisos del usuario
+		const permittedTasks = filterTasksByPermissions(tasks || [])
 
-		return (tasks || [])
+		return permittedTasks
 			.filter((task) => matchesPeriod(task, period))
 			.filter((task) => {
 				if (!normalizedQuery) return true
@@ -541,7 +907,7 @@ export default function Home() {
 											</div>
 											<div className="home-recent-footer">
 												<span>{formatDateLabel(getTaskDate(task))}</span>
-												<span>{getTaskDueTime(task) || 'Sin hora'}</span>
+												<span>{getTaskDeadlineTime(task) || 'Sin hora'}</span>
 												<span>{getTaskType(task) || 'Sin tipo'}</span>
 											</div>
 										</div>

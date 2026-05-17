@@ -6,6 +6,34 @@ import './Login.css'
 import api, { setAuthToken } from '../../service/api';
 import { setUserSession } from '../../service/localStorage';
 
+const decodeJwtPayload = (token) => {
+    try {
+        const base64Url = token.split('.')[1];
+        if (!base64Url) return null;
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+        return JSON.parse(atob(padded));
+    } catch (e) {
+        return null;
+    }
+};
+
+const resolveRoleFromClaims = (payload = {}) => {
+    const directRole = payload.role || payload.rol || payload.userRole || payload.tipoRol;
+    if (directRole) return String(directRole).replace(/^ROLE_/, '').toUpperCase();
+
+    const rolesArray = Array.isArray(payload.roles)
+        ? payload.roles
+        : (Array.isArray(payload.authorities) ? payload.authorities : []);
+
+    if (rolesArray.length > 0) {
+        const first = String(rolesArray[0] || '');
+        return first.replace(/^ROLE_/, '').toUpperCase();
+    }
+
+    return '';
+};
+
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -44,6 +72,8 @@ export default function Login() {
             const resp = await api.post('/api/v1/auth/login', { email, password });
             const data = resp.data || {};
             const token = data.token;
+            // El backend retorna { token, user: UserDto }
+            const userData = data.user || {};
 
             if (token) {
                 // Limpiar datos mockeados del localStorage antes de guardar datos reales del backend
@@ -53,28 +83,32 @@ export default function Login() {
 
                 // guardar token y configurar instancia api
                 setAuthToken(token);
-                // establecer sesión mínima inmediatamente para actualizar UI (Navbar, Checkout)
-                try {
-                    setUserSession({ email: data.email || email, name: data.name || data.firstName || '' });
-                } catch (e) { /* noop */ }
-                // intentar obtener perfil completo del usuario desde backend y reemplazar la sesión
-                try {
-                    const respUser = await api.get('/api/v1/users/by-email', {
-                        params: { email: data.email || email }
-                    });
-                    if (respUser?.data) {
-                        // Verificar si el usuario está activo antes de permitir el acceso
-                        if (respUser.data.activo === false) {
-                            setAuthToken(null);
-                            showErrorToast('Tu cuenta está desactivada. Contacta al administrador.');
-                            return;
-                        }
-                        setUserSession(respUser.data);
-                    }
-                } catch (err) {
-                    // si falla, ya tenemos una sesión mínima (no bloqueamos por error de red)
+
+                // Verificar si el usuario está activo
+                if (userData.activo === false) {
+                    setAuthToken(null);
+                    showErrorToast('Tu cuenta está desactivada. Contacta al administrador.');
+                    return;
                 }
-                localStorage.setItem('email', data.email || email);
+
+                // Usar directamente el user del response del login (incluye id, email, role, etc.)
+                if (userData.id) {
+                    setUserSession(userData);
+                } else {
+                    // Fallback: decodificar JWT si por algún motivo no hay userData
+                    const claims = decodeJwtPayload(token) || {};
+                    const sessionFromToken = {
+                        id: userData.id || claims.userId || claims.id || claims.uid || null,
+                        email: userData.email || claims.email || claims.sub || email,
+                        name: userData.name || userData.firstName || claims.name || '',
+                        firstName: userData.firstName || claims.firstName || '',
+                        lastName: userData.lastName || claims.lastName || '',
+                        role: userData.role || resolveRoleFromClaims(claims)
+                    };
+                    setUserSession(sessionFromToken);
+                }
+
+                localStorage.setItem('email', userData.email || email);
 
                 showSuccessToast(data.message || 'Inicio de sesión exitoso');
                 navigate(redirectTo);

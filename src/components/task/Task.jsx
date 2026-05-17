@@ -9,7 +9,21 @@ import '../users/users.css'
 import { Navigate } from 'react-router-dom'
 import { confirmAction } from '../../utils/alert'
 import { showErrorToast, showSuccessToast } from '../../utils/toast'
-import { isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers } from '../../service/localStorage'
+import { isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers, getCurrentUser } from '../../service/localStorage'
+import {
+  canViewAllTasks,
+  canViewOwnTasks,
+  canCreateTasks,
+  canEditTasks,
+  canEditOwnTasks,
+  canDeleteTasks,
+  canAssignTasks,
+  canChangeTaskStatus,
+  canViewUsers,
+  isTaskOwner,
+  filterTasksByPermissions,
+  canEditSpecificTask
+} from '../../service/permissions'
 import { getTasks, createTask, updateTask, deleteTask } from '../../service/taskService'
 import { getApartments } from '../../service/apartmentService'
 import { getUsers } from '../../service/userService'
@@ -38,10 +52,11 @@ import { TaskDetailPanel } from '../taskDetail'
 
 
 export default function Task() {
- // Control de acceso: solo usuarios autenticados con rol admin o supervisor.
+ // Control de acceso: usuarios autenticados que puedan ver tareas
  const isLoggedIn = isUserLoggedIn()
- const isAdmin = isUserAdmin()
- const canAccess = isAdmin || isUserSupervisor()
+ const canViewAllTasksPermission = canViewAllTasks()
+ const canViewOwnTasksPermission = canViewOwnTasks()
+ const canAccess = canViewAllTasksPermission || canViewOwnTasksPermission
 
  if (!isLoggedIn) {
   return <Navigate to="/login?redirect=/tasks" replace />
@@ -152,14 +167,16 @@ export default function Task() {
  const getTypeColor = (typeLabel = '') => {
   const normalized = normalizeSearchText(typeLabel)
   if (normalized.includes('mantencion')) return '#dc3545'
-  if (normalized.includes('aseo')) return '#00c4f5'
+  if (normalized.includes('aseo')) return '#f1f500'
+  if (normalized.includes('repaso')) return '#00f5e1'
   return '#6c757d' // gris
  }
 
  const getDeadLine = (typeLabel = '') => {
   const normalized = normalizeSearchText(typeLabel)
   if (normalized.includes('mantencion')) return '15:00'
-  if (normalized.includes('aseo')) return 'No aplica'
+  if (normalized.includes('aseo')) return '16:00'
+  if (normalized.includes('repaso')) return '16:00'
   return 'No Aplica' // gris
  }
 
@@ -240,11 +257,14 @@ export default function Task() {
  const refreshAll = async () => {
   setLoading(true)
 
+  // Para TRABAJADOR, no se llama a getUsers() porque el backend devuelve 403
+  const usersFetch = canViewUsers() ? getUsers() : Promise.resolve([])
+
   // Cargamos datos en paralelo para que la tabla ya tenga mapeo de ids a etiquetas.
   const [tasksResult, apartmentsResult, usersResult, statusesResult] = await Promise.allSettled([
    getTasks(),
    getApartments(),
-   getUsers(),
+   usersFetch,
    getStatuses(),
    getTaskType()
   ])
@@ -283,7 +303,10 @@ export default function Task() {
  const filteredTasks = useMemo(() => {
   const term = normalizeSearchText(searchTerm)
 
-  return tasks.filter((task) => {
+  // Primero, filtrar tareas por permisos del usuario
+  let permittedTasks = filterTasksByPermissions(tasks)
+
+  return permittedTasks.filter((task) => {
    const apartmentId = getTaskApartmentId(task)
    const statusId = getTaskStatusId(task)
    const typeId = normalizeSearchText(getTaskType(task))
@@ -450,7 +473,7 @@ export default function Task() {
    <CCard className="users-card mb-4 shadow-sm border-0">
     <CCardHeader className="bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
      <h4 className="mb-0 fw-bold">Gestion de Tareas</h4>
-     {isAdmin && (
+     {canCreateTasks() && (
       <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
        <CIcon icon={icon.cilPlus} /> Anadir Tarea
       </CButton>
@@ -588,7 +611,7 @@ export default function Task() {
          <CTableHeaderCell className='d-none d-lg-table-cell'>Hora Limite</CTableHeaderCell>
          <CTableHeaderCell className='d-none d-lg-table-cell'>Tipo</CTableHeaderCell>
          <CTableHeaderCell>Estado</CTableHeaderCell>
-         {isAdmin && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
+         {(canEditTasks() || canDeleteTasks() || canChangeTaskStatus()) && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
         </CTableRow>
        </CTableHead>
 
@@ -665,19 +688,21 @@ export default function Task() {
             </div>
            </CTableDataCell>
 
-           {isAdmin && (
+           {(canEditSpecificTask(task) || canDeleteTasks() || canChangeTaskStatus()) && (
             <CTableDataCell className="d-none d-sm-table-cell">
              <div className="users-actions d-flex justify-content-center gap-2">
-              <CButton
-               color="info"
-               variant="outline"
-               className="users-action-btn"
-               title="Editar tarea"
-               aria-label={`Editar tarea ${task.titulo || 'tarea'}`}
-               onClick={() => void handleEditTask(task)}
-              >
-               <CIcon icon={icon.cilPencil} size="sm" />
-              </CButton>
+              {canEditSpecificTask(task) && (
+               <CButton
+                color="info"
+                variant="outline"
+                className="users-action-btn"
+                title="Editar tarea"
+                aria-label={`Editar tarea ${task.titulo || 'tarea'}`}
+                onClick={() => void handleEditTask(task)}
+               >
+                <CIcon icon={icon.cilPencil} size="sm" />
+               </CButton>
+              )}
               <CButton
                color="success"
                variant="outline"
@@ -688,15 +713,17 @@ export default function Task() {
               >
                <CIcon icon={icon.cilZoom} size="sm" />
               </CButton>
-              <CButton
-               color="danger"
-               className="users-action-btn users-action-btn-danger"
-               title="Eliminar tarea"
-               aria-label={`Eliminar tarea ${task.titulo || 'tarea'}`}
-               onClick={() => handleDeleteTask(task)}
-              >
-               <CIcon icon={icon.cilTrash} size="sm" />
-              </CButton>
+              {canDeleteTasks() && (
+               <CButton
+                color="danger"
+                className="users-action-btn users-action-btn-danger"
+                title="Eliminar tarea"
+                aria-label={`Eliminar tarea ${task.titulo || 'tarea'}`}
+                onClick={() => handleDeleteTask(task)}
+               >
+                <CIcon icon={icon.cilTrash} size="sm" />
+               </CButton>
+              )}
              </div>
             </CTableDataCell>
            )}
