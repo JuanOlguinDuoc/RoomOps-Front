@@ -15,7 +15,7 @@ import { getTasks } from '../../service/taskService'
 import { getUsers } from '../../service/userService'
 import { getApartments } from '../../service/apartmentService'
 import { getStatuses } from '../../service/statusService'
-import { getAllUsers, isUserLoggedIn } from '../../service/localStorage'
+import { getAllUsers, getCurrentUser, isUserLoggedIn } from '../../service/localStorage'
 import {
   canViewAdminDashboard,
   filterTasksByPermissions,
@@ -86,6 +86,11 @@ const PERIOD_OPTIONS = [
 
 const COMPLETED_NOTIFICATIONS_KEY = 'roomops-completed-notifications'
 const TASK_STATUS_SNAPSHOT_KEY = 'roomops-task-status-snapshot'
+
+const buildScopedStorageKey = (baseKey, user) => {
+  const userId = user?.id ?? user?.email ?? user?.run ?? user?.role ?? 'anonymous'
+  return `${baseKey}-${String(userId).trim().toLowerCase()}`
+}
 
 const normalizeId = (value) => (value == null || value === '' ? null : Number(value))
 
@@ -684,6 +689,9 @@ function MetricCard({ icon: Icon, title, value, helper, tone = 'neutral' }) {
 export default function Home() {
   const isLoggedIn = isUserLoggedIn()
   const hasAdminDashboard = canViewAdminDashboard()
+  const currentUser = getCurrentUser()
+  const notificationsStorageKey = useMemo(() => buildScopedStorageKey(COMPLETED_NOTIFICATIONS_KEY, currentUser), [currentUser])
+  const taskSnapshotStorageKey = useMemo(() => buildScopedStorageKey(TASK_STATUS_SNAPSHOT_KEY, currentUser), [currentUser])
 
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />
@@ -704,13 +712,13 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(COMPLETED_NOTIFICATIONS_KEY)
+      const raw = window.localStorage.getItem(notificationsStorageKey)
       const parsed = raw ? JSON.parse(raw) : []
       setNotifications(Array.isArray(parsed) ? parsed : [])
     } catch {
       setNotifications([])
     }
-  }, [])
+  }, [notificationsStorageKey])
 
   useEffect(() => {
     let isMounted = true
@@ -814,7 +822,7 @@ export default function Home() {
 
     setNotifications((prev) => {
       const next = prev.map((n) => ({ ...n, read: true }))
-      window.localStorage.setItem(COMPLETED_NOTIFICATIONS_KEY, JSON.stringify(next))
+      window.localStorage.setItem(notificationsStorageKey, JSON.stringify(next))
       return next
     })
   }
@@ -834,7 +842,7 @@ export default function Home() {
 
     let prevSnapshot = null
     try {
-      const rawPrev = window.localStorage.getItem(TASK_STATUS_SNAPSHOT_KEY)
+      const rawPrev = window.localStorage.getItem(taskSnapshotStorageKey)
       prevSnapshot = rawPrev ? JSON.parse(rawPrev) : null
     } catch {
       prevSnapshot = null
@@ -870,11 +878,11 @@ export default function Home() {
             }
           })
 
-        window.localStorage.setItem(COMPLETED_NOTIFICATIONS_KEY, JSON.stringify(seeded))
+        window.localStorage.setItem(notificationsStorageKey, JSON.stringify(seeded))
         return seeded
       })
 
-      window.localStorage.setItem(TASK_STATUS_SNAPSHOT_KEY, JSON.stringify(currentSnapshot))
+      window.localStorage.setItem(taskSnapshotStorageKey, JSON.stringify(currentSnapshot))
       return
     }
 
@@ -903,13 +911,13 @@ export default function Home() {
     if (justCompleted.length > 0) {
       setNotifications((prev) => {
         const next = [...justCompleted, ...prev].slice(0, 50)
-        window.localStorage.setItem(COMPLETED_NOTIFICATIONS_KEY, JSON.stringify(next))
+        window.localStorage.setItem(notificationsStorageKey, JSON.stringify(next))
         return next
       })
     }
 
-    window.localStorage.setItem(TASK_STATUS_SNAPSHOT_KEY, JSON.stringify(currentSnapshot))
-  }, [tasks, statusById])
+    window.localStorage.setItem(taskSnapshotStorageKey, JSON.stringify(currentSnapshot))
+  }, [notificationsStorageKey, taskSnapshotStorageKey, tasks, statusById])
 
   const visibleTasks = useMemo(() => {
     const normalizedQuery = normalizeTaskText(searchTerm)

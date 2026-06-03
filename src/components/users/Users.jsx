@@ -60,6 +60,16 @@ export default function Users() {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedRole, setSelectedRole] = useState('Todos')
   const [selectedStatus, setSelectedStatus] = useState('Todos')
+  const getRowsPerPage = () => {
+    if (typeof window === 'undefined') return 10
+
+    const { innerWidth: width, innerHeight: height } = window
+    if (width < 576) return height < 760 ? 5 : 6
+    if (width < 992) return height < 820 ? 7 : 8
+    return height < 820 ? 9 : 10
+  }
+  const [rowsPerPage, setRowsPerPage] = useState(getRowsPerPage)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // El formulario usa la forma del backend (run, firstName, lastName, email, password, role).
   const [nuevoUser, setNuevoUser] = useState({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
@@ -67,6 +77,15 @@ export default function Users() {
   // Cargar usuarios al montar la vista.
   useEffect(() => {
     refreshAll()
+  }, [])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setRowsPerPage(getRowsPerPage())
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const normalizeSearchText = (value = '') => {
@@ -107,6 +126,38 @@ export default function Users() {
       return matchesSearch && matchesRole && matchesStatus
     })
   }, [users, searchTerm, selectedRole, selectedStatus])
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage))
+  }, [filteredUsers.length, rowsPerPage])
+
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage
+    return filteredUsers.slice(start, start + rowsPerPage)
+  }, [filteredUsers, currentPage, rowsPerPage])
+
+  const pageNumbers = useMemo(() => {
+    const maxVisible = 5
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1)
+    }
+
+    let start = Math.max(1, currentPage - 2)
+    let end = Math.min(totalPages, start + maxVisible - 1)
+    start = Math.max(1, end - maxVisible + 1)
+
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+  }, [currentPage, totalPages])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedRole, selectedStatus, rowsPerPage])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const refreshAll = async () => {
     setLoading(true)
@@ -469,7 +520,7 @@ export default function Users() {
               </CTableRow>
             </CTableHead>
             <CTableBody>
-              {filteredUsers
+              {paginatedUsers
                 .map((user) => (
                   <CTableRow key={user.id || user._id || user.email}>
                     <CTableDataCell className="text-start d-none d-sm-table-cell">
@@ -555,13 +606,22 @@ export default function Users() {
           {/* Paginacion inferior. */}
           <div className="users-footer d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
             <div className="small text-secondary">
-              {loading ? 'Cargando usuarios...' : `Mostrando ${filteredUsers.length} usuarios`}
+              {loading
+                ? 'Cargando usuarios...'
+                : `Mostrando ${paginatedUsers.length} de ${filteredUsers.length} usuarios (pagina ${currentPage}/${totalPages})`}
             </div>
             <CPagination aria-label="Page navigation" className="mb-0" style={{ cursor: 'pointer' }}>
-              <CPaginationItem disabled>Anterior</CPaginationItem>
-              <CPaginationItem active>1</CPaginationItem>
-              <CPaginationItem>2</CPaginationItem>
-              <CPaginationItem>Siguiente</CPaginationItem>
+              <CPaginationItem disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}>Anterior</CPaginationItem>
+              {pageNumbers.map((page) => (
+                <CPaginationItem
+                  key={`users-page-${page}`}
+                  active={page === currentPage}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </CPaginationItem>
+              ))}
+              <CPaginationItem disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}>Siguiente</CPaginationItem>
             </CPagination>
           </div>
         </CCardBody>

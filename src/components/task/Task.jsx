@@ -81,9 +81,28 @@ export default function Task() {
  const [selectedDate, setSelectedDate] = useState("Todos")
  const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
+ const getRowsPerPage = () => {
+  if (typeof window === 'undefined') return 10
+
+  const { innerWidth: width, innerHeight: height } = window
+  if (width < 576) return height < 760 ? 5 : 6
+  if (width < 992) return height < 820 ? 7 : 8
+  return height < 820 ? 9 : 10
+ }
+ const [rowsPerPage, setRowsPerPage] = useState(getRowsPerPage)
+ const [currentPage, setCurrentPage] = useState(1)
 
  useEffect(() => {
   refreshAll()
+ }, [])
+
+ useEffect(() => {
+  const handleResize = () => {
+   setRowsPerPage(getRowsPerPage())
+  }
+
+  window.addEventListener('resize', handleResize)
+  return () => window.removeEventListener('resize', handleResize)
  }, [])
 
  const normalizeSearchText = (value = '') => {
@@ -323,6 +342,38 @@ export default function Task() {
    return matchesAssignee && matchesSearch && matchesApartment && matchesStatus && matchesType && matchesDate
   })
  }, [tasks, searchTerm, selectedDate, selectedAssignee, selectedApartment, selectedStatus, selectedType, apartmentNameById, userNameById, statusNameById])
+
+ const totalPages = useMemo(() => {
+  return Math.max(1, Math.ceil(filteredTasks.length / rowsPerPage))
+ }, [filteredTasks.length, rowsPerPage])
+
+ const paginatedTasks = useMemo(() => {
+  const start = (currentPage - 1) * rowsPerPage
+  return filteredTasks.slice(start, start + rowsPerPage)
+ }, [filteredTasks, currentPage, rowsPerPage])
+
+ const pageNumbers = useMemo(() => {
+  const maxVisible = 5
+  if (totalPages <= maxVisible) {
+   return Array.from({ length: totalPages }, (_, idx) => idx + 1)
+  }
+
+  let start = Math.max(1, currentPage - 2)
+  let end = Math.min(totalPages, start + maxVisible - 1)
+  start = Math.max(1, end - maxVisible + 1)
+
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+ }, [currentPage, totalPages])
+
+ useEffect(() => {
+  setCurrentPage(1)
+ }, [searchTerm, selectedDate, selectedAssignee, selectedApartment, selectedStatus, selectedType, rowsPerPage])
+
+ useEffect(() => {
+  if (currentPage > totalPages) {
+   setCurrentPage(totalPages)
+  }
+ }, [currentPage, totalPages])
 
  const clearFilters = () => {
   setSelectedApartment('Todos')
@@ -616,7 +667,7 @@ export default function Task() {
        </CTableHead>
 
        <CTableBody>
-        {filteredTasks.map((task) => {
+        {paginatedTasks.map((task) => {
          const apartmentId = getTaskApartmentId(task)
          const assignedUserId = getTaskAssignedUserId(task)
          const statusLabel = getTaskStatusLabel(task)
@@ -736,13 +787,22 @@ export default function Task() {
 
      <div className="users-footer d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
       <div className="small text-secondary">
-       {loading ? 'Cargando tareas...' : `Mostrando ${filteredTasks.length} tareas`}
+       {loading
+        ? 'Cargando tareas...'
+        : `Mostrando ${paginatedTasks.length} de ${filteredTasks.length} tareas (pagina ${currentPage}/${totalPages})`}
       </div>
       <CPagination aria-label="Paginacion de tareas" className="mb-0" style={{ cursor: 'pointer' }}>
-       <CPaginationItem disabled>Anterior</CPaginationItem>
-       <CPaginationItem active>1</CPaginationItem>
-       <CPaginationItem>2</CPaginationItem>
-       <CPaginationItem>Siguiente</CPaginationItem>
+       <CPaginationItem disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}>Anterior</CPaginationItem>
+       {pageNumbers.map((page) => (
+        <CPaginationItem
+         key={`task-page-${page}`}
+         active={page === currentPage}
+         onClick={() => setCurrentPage(page)}
+        >
+         {page}
+        </CPaginationItem>
+       ))}
+       <CPaginationItem disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}>Siguiente</CPaginationItem>
       </CPagination>
      </div>
     </CCardBody>

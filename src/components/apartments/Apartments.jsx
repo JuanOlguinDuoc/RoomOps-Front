@@ -66,10 +66,29 @@ export default function Apartments() {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedFloor, setSelectedFloor] = useState('Todos')
   const [selectedStatus, setSelectedStatus] = useState('Todos')
+  const getRowsPerPage = () => {
+    if (typeof window === 'undefined') return 10
+
+    const { innerWidth: width, innerHeight: height } = window
+    if (width < 576) return height < 760 ? 5 : 6
+    if (width < 992) return height < 820 ? 7 : 8
+    return height < 820 ? 9 : 10
+  }
+  const [rowsPerPage, setRowsPerPage] = useState(getRowsPerPage)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Cargar apartamentos al montar la vista.
   useEffect(() => {
     refreshAll()
+  }, [])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setRowsPerPage(getRowsPerPage())
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const normalizeSearchText = (value = '') => {
@@ -142,6 +161,38 @@ export default function Apartments() {
       return matchesSearch && matchesFloor && matchesStatus
     })
   }, [apartments, searchTerm, selectedFloor, selectedStatus])
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredApartment.length / rowsPerPage))
+  }, [filteredApartment.length, rowsPerPage])
+
+  const paginatedApartments = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage
+    return filteredApartment.slice(start, start + rowsPerPage)
+  }, [filteredApartment, currentPage, rowsPerPage])
+
+  const pageNumbers = useMemo(() => {
+    const maxVisible = 5
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1)
+    }
+
+    let start = Math.max(1, currentPage - 2)
+    let end = Math.min(totalPages, start + maxVisible - 1)
+    start = Math.max(1, end - maxVisible + 1)
+
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+  }, [currentPage, totalPages])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedFloor, selectedStatus, rowsPerPage])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const clearFilters = () => {
     // Limpia solo filtros, manteniendo busqueda por texto si el usuario la puso.
@@ -450,7 +501,7 @@ export default function Apartments() {
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {filteredApartment
+                {paginatedApartments
                     .map((apartment) => (
                       <CTableRow key={apartment.id}>
                       <CTableDataCell className="text-start d-none d-sm-table-cell">
@@ -546,13 +597,22 @@ export default function Apartments() {
           {/* Paginacion inferior. */}
           <div className="users-footer d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
             <div className="small text-secondary">
-              {loading ? 'Cargando apartamentos...' : `Mostrando ${filteredApartment.length} apartamentos`}
+              {loading
+                ? 'Cargando apartamentos...'
+                : `Mostrando ${paginatedApartments.length} de ${filteredApartment.length} apartamentos (pagina ${currentPage}/${totalPages})`}
             </div>
             <CPagination aria-label="Page navigation" className="mb-0" style={{ cursor: 'pointer' }}>
-              <CPaginationItem disabled>Anterior</CPaginationItem>
-              <CPaginationItem active>1</CPaginationItem>
-              <CPaginationItem>2</CPaginationItem>
-              <CPaginationItem>Siguiente</CPaginationItem>
+              <CPaginationItem disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}>Anterior</CPaginationItem>
+              {pageNumbers.map((page) => (
+                <CPaginationItem
+                  key={`apartments-page-${page}`}
+                  active={page === currentPage}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </CPaginationItem>
+              ))}
+              <CPaginationItem disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}>Siguiente</CPaginationItem>
             </CPagination>
           </div>
         </CCardBody>
