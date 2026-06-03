@@ -1,8 +1,6 @@
 package com.hoteleria.roomsOps.service;
 
 import java.util.ArrayList;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,12 +47,6 @@ public class TaskService {
 
     public TaskDto createTask(TaskDto taskDto) {
         Task task = TaskDto.toEntity(taskDto);
-        if (task.getFecha() == null) {
-            task.setFecha(LocalDate.now());
-        }
-        if (task.getDueTime() == null) {
-            task.setDueTime(LocalTime.now().withSecond(0).withNano(0));
-        }
         applyRelations(task, taskDto, true);
         task.setChecklist(copyChecklist(taskDto.getChecklist()));
         task = taskRepo.save(task);

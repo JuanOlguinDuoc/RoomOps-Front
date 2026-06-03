@@ -1,14 +1,12 @@
 package com.hoteleria.roomsOps.dto;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,44 +16,55 @@ import lombok.NoArgsConstructor;
 import com.hoteleria.roomsOps.model.ChecklistItem;
 import com.hoteleria.roomsOps.model.Task;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(name = "Task", description = "Tarea asociada a un apartamento")
 public class TaskDto {
+    @Schema(description = "Identificador de la tarea", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
     private Long id;
+
+    @Schema(description = "Titulo de la tarea", example = "Limpiar bano")
     private String titulo;
+
+    @Schema(description = "Descripcion detallada de la tarea", example = "Realizar limpieza profunda del bano principal")
     private String descripcion;
 
-    @JsonAlias("type")
+    @Schema(description = "Tipo de tarea", example = "LIMPIEZA")
     private String tipo;
 
-    @JsonAlias("priority")
+    @Schema(description = "Prioridad de la tarea", example = "ALTA")
     private String prioridad;
 
-    @JsonAlias("date")
+    @Schema(description = "Fecha programada de ejecucion", example = "2026-05-18")
     private LocalDate fecha;
 
-    @JsonProperty("dueTime")
-    @JsonAlias({"due_time", "dueDateTime"})
-    @JsonFormat(pattern = "HH:mm")
-    private LocalTime dueTime;
+    @JsonAlias("horaLimite")
+    @Schema(description = "Hora limite en formato HH:mm", example = "14:00")
+    private String dueTime;
 
     @JsonProperty("apartamentoId")
     @JsonAlias("apartmentId")
+    @Schema(description = "Identificador del apartamento asociado", example = "1")
     private Long apartmentId;
 
     @JsonProperty("usuarioAsignadoId")
     @JsonAlias("assignedUserId")
+    @Schema(description = "Identificador del usuario asignado", example = "2")
     private Long assignedUserId;
 
     @JsonProperty("estadoId")
     @JsonAlias("statusId")
+    @Schema(description = "Identificador del estado de la tarea", example = "3")
     private Long statusId;
 
     @Builder.Default
     @JsonProperty("listaVerificacion")
     @JsonAlias("checklist")
+    @Schema(description = "Lista de verificacion asociada a la tarea")
     private List<ChecklistItem> checklist = new ArrayList<>();
 
     public static TaskDto fromEntity(Task t){
@@ -64,10 +73,10 @@ public class TaskDto {
                 .id(t.getId())
                 .titulo(t.getTitulo())
                 .descripcion(t.getDescripcion())
-            .tipo(t.getTipo())
-            .prioridad(t.getPrioridad())
-            .fecha(t.getFecha())
-            .dueTime(t.getDueTime())
+                .tipo(t.getTipo())
+                .prioridad(t.getPrioridad())
+                .fecha(t.getFecha())
+                .dueTime(t.getDueTime())
             .apartmentId(t.getApartment() != null ? t.getApartment().getId() : null)
             .assignedUserId(t.getAssignedTo() != null ? t.getAssignedTo().getId() : null)
             .statusId(t.getStatus() != null ? t.getStatus().getId() : null)

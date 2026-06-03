@@ -1,9 +1,8 @@
 package com.hoteleria.roomsOps.model;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.LocalDate;
-import java.time.LocalTime;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -31,8 +30,7 @@ public class Task {
 
     private LocalDate fecha;
 
-    @Column(name = "due_time")
-    private LocalTime dueTime;
+    private String dueTime; // "15:00"
 
     @ManyToOne
     @JoinColumn(name = "apartment_id", nullable = false)

@@ -19,3 +19,12 @@ Thumbs.db
 # Configuración del editor
 .vscode/
 .idea/
+
+# Documentos
+*.pdf
+*.PDF
+*.md
+*.MD
+
+# Carpeta backend local
+roomops/

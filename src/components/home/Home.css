@@ -37,6 +37,7 @@
   flex: 1 1 22rem;
   justify-content: flex-end;
   min-width: 0;
+  padding-right: clamp(4.75rem, 7vw, 6.5rem);
 }
 
 .home-search {
@@ -855,6 +856,7 @@ html.theme-logo-dark .home-view-all:hover {
 
   .home-topbar-actions {
     width: 100%;
+    padding-right: 0;
   }
 
   .home-search {
