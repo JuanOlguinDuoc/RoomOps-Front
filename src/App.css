@@ -33,7 +33,7 @@
   flex: 1;
   min-width: 0;
   padding: 1rem 0.75rem;
-  background: linear-gradient(180deg, #d9f3ff 0%, #8ecbf0 100%);
+  background: var(--roomops-app-bg);
   color: #0f172a;
   border-left: 1px solid rgba(226, 232, 240, 1);
 }

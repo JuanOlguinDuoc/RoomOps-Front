@@ -230,6 +230,30 @@ const getTaskStatusKey = (task, statusesById) => {
   return getChecklistOverallStatusKey(checklist)
 }
 
+const getChecklistBlockedItems = (task = {}) => {
+  const checklist = task?.checklist || task?.listaVerificacion || []
+  if (!Array.isArray(checklist) || checklist.length === 0) return []
+
+  return checklist
+    .map((item, index) => {
+      const rawState = item?.estado || item?.status || item?.checklistStatus || item?.estadoChecklist || ''
+      const normalizedState = normalizeTaskText(rawState)
+
+      if (!normalizedState.includes('bloquead') && !normalizedState.includes('blocked')) {
+        return null
+      }
+
+      const title = item?.titulo || item?.title || item?.nombre || item?.descripcion || `Item ${index + 1}`
+      const note = item?.nota || item?.observacion || item?.comentario || item?.detalle || ''
+
+      return {
+        title: String(title),
+        note: String(note || '')
+      }
+    })
+    .filter(Boolean)
+}
+
 const formatDateLabel = (value) => {
   if (!value) return 'Sin fecha'
 
@@ -756,16 +780,34 @@ export default function Home() {
     const itemsHtml = notifications
       .slice(0,10)
       .map((n) => {
-        const stateLabel = n?.state === 'blocked' ? 'Bloqueada' : 'Completada'
+        const isBlocked = n?.state === 'blocked'
+        const stateLabel = isBlocked ? 'Bloqueada' : 'Completada'
+        const cardBackground = isBlocked ? 'rgba(239, 68, 68, 0.14)' : 'rgba(16, 185, 129, 0.14)'
+        const cardBorder = isBlocked ? '1px solid rgba(248, 113, 113, 0.55)' : '1px solid rgba(74, 222, 128, 0.55)'
         const date = new Date(n.completedAt).toLocaleString('es-CL')
-        return `<li style="margin-bottom: 10px;"><strong>${n.title}</strong><br/><small>${stateLabel} - ${date}</small></li>`
+
+        let blockedItemsHtml = ''
+        if (isBlocked && Array.isArray(n?.blockedItems) && n.blockedItems.length > 0) {
+          const blockedSummary = n.blockedItems
+            .slice(0, 3)
+            .map((item) => {
+              const reason = item?.note ? ` (${item.note})` : ''
+              return `- ${item?.title || 'Item bloqueado'}${reason}`
+            })
+            .join('<br/>')
+
+          const extraCount = n.blockedItems.length > 3 ? `<br/>... y ${n.blockedItems.length - 3} item(es) mas` : ''
+          blockedItemsHtml = `<br/><small><strong>Checklist bloqueado:</strong><br/>${blockedSummary}${extraCount}</small>`
+        }
+
+        return `<li style="list-style:none; margin: 0 0 10px 0; padding: 10px 12px; border-radius: 10px; background: ${cardBackground}; border: ${cardBorder};"><strong>${n.title}</strong><br/><small>${stateLabel} - ${date}</small>${blockedItemsHtml}</li>`
       })
       .join('')
 
     await Swal.fire({
       icon: 'success',
-      title: 'Tareas Completadas y Bloqueadas',
-      html: `<ul style="text-align: left; padding-left: 18px; max-height: 280px; overflow: auto;">${itemsHtml}</ul>`,
+      title: 'Notificacion Tareas',
+      html: `<ul style="text-align: left; padding: 0; margin: 0; max-height: 320px; overflow: auto;">${itemsHtml}</ul>`,
       confirmButtonText: 'Cerrar',
       ...swalThemeOptions
     })
@@ -816,12 +858,14 @@ export default function Home() {
           .slice(0, 50)
           .map((task, index) => {
             const state = getTaskStatusKey(task, statusById)
+            const blockedItems = state === 'blocked' ? getChecklistBlockedItems(task) : []
             return {
             id: `seed-${task.id}-${index}`,
             taskId: task.id,
             title: task.titulo || `Tarea ${task.id}`,
             completedAt: new Date().toISOString(),
             state,
+            blockedItems,
             read: false
             }
           })
@@ -843,12 +887,14 @@ export default function Home() {
       const nextStatus = currentSnapshot[taskId]
 
       if (prevStatus !== nextStatus && trackedStates.has(nextStatus)) {
+        const blockedItems = nextStatus === 'blocked' ? getChecklistBlockedItems(task) : []
         justCompleted.push({
           id: `${taskId}-${Date.now()}`,
           taskId: task.id,
           title: task.titulo || `Tarea ${task.id}`,
           completedAt: new Date().toISOString(),
           state: nextStatus,
+          blockedItems,
           read: false
         })
       }

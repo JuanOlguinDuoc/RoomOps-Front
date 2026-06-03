@@ -146,7 +146,7 @@ export default function Login() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                    /><br />
+                    />
                     <input
                         type="password"
                         id="password"
@@ -155,12 +155,8 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                    /><br />
+                    />
                     <button type="submit" className="btn" disabled={loading}>
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                        <span></span>
                         {loading ? 'Ingresando...' : 'Iniciar sesión'}
                     </button>
                 </form>
