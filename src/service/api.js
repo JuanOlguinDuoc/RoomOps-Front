@@ -1,8 +1,20 @@
 import axios from 'axios';
 import { clearUserSession, hasValidToken } from './localStorage';
 
+const MODE = import.meta.env.MODE;
+const DEFAULT_API_URL_BY_MODE = {
+  aws: 'http://ec2-3-85-173-83.compute-1.amazonaws.com:5000',
+  production: 'http://ec2-3-85-173-83.compute-1.amazonaws.com:5000',
+  development: 'http://localhost:5000',
+};
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  DEFAULT_API_URL_BY_MODE[MODE] ||
+  DEFAULT_API_URL_BY_MODE.development;
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   }
