@@ -747,7 +747,7 @@ export default function Home() {
       await Swal.fire({
         icon: 'info',
         title: 'Notificaciones',
-        text: 'Aún no se ha completado ninguna tarea.',
+        text: 'Aún no hay tareas completadas o bloqueadas para mostrar.',
         ...swalThemeOptions
       })
       return  
@@ -756,14 +756,15 @@ export default function Home() {
     const itemsHtml = notifications
       .slice(0,10)
       .map((n) => {
+        const stateLabel = n?.state === 'blocked' ? 'Bloqueada' : 'Completada'
         const date = new Date(n.completedAt).toLocaleString('es-CL')
-        return `<li style="margin-bottom: 10px;"><strong>${n.title}</strong><br/><small>${date}</small></li>`
+        return `<li style="margin-bottom: 10px;"><strong>${n.title}</strong><br/><small>${stateLabel} - ${date}</small></li>`
       })
       .join('')
 
     await Swal.fire({
       icon: 'success',
-      title: 'Tareas Completadas',
+      title: 'Tareas Completadas y Bloqueadas',
       html: `<ul style="text-align: left; padding-left: 18px; max-height: 280px; overflow: auto;">${itemsHtml}</ul>`,
       confirmButtonText: 'Cerrar',
       ...swalThemeOptions
@@ -797,7 +798,8 @@ export default function Home() {
       prevSnapshot = null
     }
 
-    const completedTasks = tasks.filter((task) => getTaskStatusKey(task, statusById) === 'done')
+    const trackedStates = new Set(['done', 'blocked'])
+    const completedOrBlockedTasks = tasks.filter((task) => trackedStates.has(getTaskStatusKey(task, statusById)))
 
     // Primera carga: guarda snapshot y, si no hay historial aún, siembra tareas ya completadas.
     if (!prevSnapshot || typeof prevSnapshot !== 'object') {
@@ -806,19 +808,23 @@ export default function Home() {
           return prev
         }
 
-        if (completedTasks.length === 0) {
+        if (completedOrBlockedTasks.length === 0) {
           return prev
         }
 
-        const seeded = completedTasks
+        const seeded = completedOrBlockedTasks
           .slice(0, 50)
-          .map((task, index) => ({
+          .map((task, index) => {
+            const state = getTaskStatusKey(task, statusById)
+            return {
             id: `seed-${task.id}-${index}`,
             taskId: task.id,
             title: task.titulo || `Tarea ${task.id}`,
             completedAt: new Date().toISOString(),
+            state,
             read: false
-          }))
+            }
+          })
 
         window.localStorage.setItem(COMPLETED_NOTIFICATIONS_KEY, JSON.stringify(seeded))
         return seeded
@@ -836,12 +842,13 @@ export default function Home() {
       const prevStatus = prevSnapshot[taskId]
       const nextStatus = currentSnapshot[taskId]
 
-      if (prevStatus !== 'done' && nextStatus === 'done') {
+      if (prevStatus !== nextStatus && trackedStates.has(nextStatus)) {
         justCompleted.push({
           id: `${taskId}-${Date.now()}`,
           taskId: task.id,
           title: task.titulo || `Tarea ${task.id}`,
           completedAt: new Date().toISOString(),
+          state: nextStatus,
           read: false
         })
       }
