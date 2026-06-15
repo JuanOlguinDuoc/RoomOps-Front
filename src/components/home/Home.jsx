@@ -552,7 +552,7 @@ function WorkerDashboard() {
   return (
     <section className="home-dashboard">
       <header className="home-topbar">
-        <div>
+        <div className="home-topbar-heading">
           <h1 className="home-title"> <CIcon icon={cilGraph} size="xxl" /> Dashboard Personal</h1>
           <p className="home-subtitle">Vista de tus tareas asignadas</p>
         </div>
@@ -1006,7 +1006,7 @@ export default function Home() {
   return (
     <section className="home-dashboard">
       <header className="home-topbar">
-        <div>
+        <div className="home-topbar-heading">
           <h1 className="home-title"> <CIcon icon={cilGraph} size="xxl" /> Dashboard</h1>
           <p className="home-subtitle">Resumen operativo de tareas y ocupación</p>
         </div>
