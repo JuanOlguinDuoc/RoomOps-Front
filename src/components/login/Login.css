@@ -278,10 +278,16 @@
     background: var(--roomops-app-bg);
     position: relative;
     overflow: hidden;
+    isolation: isolate;
 }
 
 .login-page::before {
-    display: none;
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(134, 203, 212, 0.55), rgba(129, 144, 199, 0.62));
+    pointer-events: none;
+    z-index: 1;
 }
 
 .login-page .form {
@@ -295,6 +301,7 @@
     backdrop-filter: none;
     color: #0f2a4d;
     padding: 2rem 1.75rem 1.8rem;
+    z-index: 2;
 }
 
 .login-page .form::before {
@@ -397,6 +404,7 @@
         min-height: 54px;
         font-size: 1.05rem;
     }
+
 }
 
 /* ------------------------------------------------------------------
@@ -447,5 +455,9 @@ html.theme-logo-dark .login-page .login-form .btn {
 html.theme-logo-dark .login-page .login-form .btn:hover {
     background: linear-gradient(180deg, #3a2d63, #2a214a);
     color: #ffffff;
+}
+
+html.theme-logo-dark .login-page::before {
+    background: linear-gradient(120deg, rgba(40, 42, 80, 0.62), rgba(30, 24, 58, 0.74));
 }
 

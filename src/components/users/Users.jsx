@@ -179,6 +179,52 @@ export default function Users() {
     return `${cleaned.slice(0, -1)}-${cleaned.slice(-1)}`
   }
 
+  const getApiErrorMessage = (err) => {
+    const backendError = err?.response?.data?.error
+    const backendMessage = err?.response?.data?.message || err?.response?.data?.mensaje
+    const genericMessages = ['error al crear usuario', 'error creando usuario']
+
+    if (backendError && String(backendError).trim()) return String(backendError).trim()
+
+    if (backendMessage && String(backendMessage).trim()) {
+      const normalizedMessage = String(backendMessage)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+
+      if (!genericMessages.includes(normalizedMessage)) {
+        return String(backendMessage).trim()
+      }
+    }
+
+    return err?.message || 'Error creando usuario'
+  }
+
+  const isDuplicateUserError = (err) => {
+    const msg = getApiErrorMessage(err)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+
+    return msg.includes('correo ya esta registrado')
+      || msg.includes('el correo ya esta registrado')
+      || msg.includes('run ya esta registrado')
+      || msg.includes('el run ya esta registrado')
+      || msg.includes('duplicate')
+      || msg.includes('unique')
+  }
+
+  const shouldUseLocalFallback = (err) => {
+    const status = err?.response?.status
+
+    if (!status) return true
+    if (status >= 500) return true
+    if (status === 400 || status === 409) return false
+
+    return false
+  }
+
   const resetForm = () => {
     setNuevoUser({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
     setEditingUser(null)
@@ -256,16 +302,28 @@ export default function Users() {
       try {
         await createUser(result.value)
       } catch (err) {
-        // Fallback local por si no hay backend disponible.
+        const msg = getApiErrorMessage(err)
+
+        if (isDuplicateUserError(err)) {
+          showErrorToast(msg)
+          return
+        }
+
+        if (!shouldUseLocalFallback(err)) {
+          showErrorToast(msg)
+          return
+        }
+
+        // Fallback local solo para errores tecnicos (sin respuesta/5xx).
         createUserAdmin(result.value)
+        showErrorToast('Se uso copia local por falla del servidor')
       }
 
       showSuccessToast('Usuario creado')
       await refreshAll()
     } catch (err) {
       console.error('Error creating user', err)
-      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error creando usuario'
-      showErrorToast(msg)
+      showErrorToast(getApiErrorMessage(err))
     }
   }
 

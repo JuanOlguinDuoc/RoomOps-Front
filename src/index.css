@@ -27,7 +27,8 @@
   --roomops-accent-soft: rgba(39, 230, 236, 0.22);
   --roomops-secondary: #6F71A1;
   --roomops-app-bg:
-    linear-gradient(328deg, rgba(113, 113, 163, 1) 0%, rgba(155, 207, 209, 1) 100%);
+    linear-gradient(328deg, rgba(72, 78, 140, 0.52) 0%, rgba(190, 224, 226, 0.30) 100%),
+    url('./assets/images/image_81b7ab4b.png') center center / cover no-repeat fixed;
 
   --text: var(--roomops-text-muted);
   --text-h: var(--roomops-text);
@@ -88,7 +89,9 @@ html.theme-logo-dark {
   --roomops-accent: #A78BFA;
   --roomops-accent-soft: rgba(167, 139, 250, 0.15);
   --roomops-secondary: #6366F1;
-  --roomops-app-bg: linear-gradient(to bottom right, #0F0A1E 0%, #7b74bb 100%);
+  --roomops-app-bg:
+    linear-gradient(135deg, rgba(8, 6, 20, 0.62) 0%, rgba(146, 132, 214, 0.34) 100%),
+    url('./assets/images/image_f40a8f4.png') center center / cover no-repeat fixed;
 
   /* Status tokens with stronger contrast on deep-purple surfaces */
   --bs-success: #34D399;

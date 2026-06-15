@@ -41,6 +41,8 @@ import { updateTask } from '../../service/taskService'
 import { showErrorToast, showSuccessToast } from '../../utils/toast'
 import './Home.css'
 import Swal from 'sweetalert2'
+import { cilGraph } from '@coreui/icons'
+import CIcon from '@coreui/icons-react'
 
 const STATUS_ORDER = ['pending', 'in-progress', 'done', 'blocked']
 
@@ -551,7 +553,7 @@ function WorkerDashboard() {
     <section className="home-dashboard">
       <header className="home-topbar">
         <div>
-          <h1 className="home-title">Dashboard Personal</h1>
+          <h1 className="home-title"> <CIcon icon={cilGraph} size="xxl" /> Dashboard Personal</h1>
           <p className="home-subtitle">Vista de tus tareas asignadas</p>
         </div>
       </header>
@@ -1005,7 +1007,7 @@ export default function Home() {
     <section className="home-dashboard">
       <header className="home-topbar">
         <div>
-          <h1 className="home-title">Dashboard</h1>
+          <h1 className="home-title"> <CIcon icon={cilGraph} size="xxl" /> Dashboard</h1>
           <p className="home-subtitle">Resumen operativo de tareas y ocupación</p>
         </div>
 
