@@ -9,6 +9,7 @@ import Login from './components/login/Login.jsx'
 import Task from './components/task/Task.jsx'
 import Kanban from './components/kanban/Kanban.jsx'
 import Apartments from './components/apartments/Apartments.jsx'
+import Home from './components/home/Home.jsx'
 import { isUserLoggedIn } from './service/localStorage'
 import modelo2Logo from './assets/icons/modelo 2.svg'
 import './App.css'
@@ -81,14 +82,6 @@ function Layout() {
   )
 }
 
-function Home() {
-  return (
-    <>
-      <h1>Inicio</h1>
-    </>
-  )
-}
-
 function RequireAuth({ children }) {
   if (!isUserLoggedIn()) {
     return <Navigate to="/login" replace />
@@ -106,6 +99,14 @@ function RequireGuest({ children }) {
 }
 
 function App() {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false
+
+    const storedTheme = window.localStorage.getItem('roomops-theme-logo-dark')
+    if (storedTheme != null) return storedTheme === '1'
+
+    return window.localStorage.getItem('roomops-dark-mode-invert') === '1'
+  })
   const [, setAuthCheckTick] = useState(0)
 
   useEffect(() => {
@@ -124,8 +125,21 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('theme-logo-dark', isDarkMode)
+    window.localStorage.setItem('roomops-theme-logo-dark', isDarkMode ? '1' : '0')
+  }, [isDarkMode])
+
   return (
     <Router>
+      <button
+        type="button"
+        className="theme-toggle"
+        onClick={() => setIsDarkMode((prev) => !prev)}
+        aria-label={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      >
+        {isDarkMode ? 'Modo claro' : 'Modo oscuro'}
+      </button>
       <ToastContainer />
 
       <Routes>

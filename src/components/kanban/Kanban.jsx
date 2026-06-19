@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Search, CalendarDays, ListChecks } from 'lucide-react'
+import { Search, CalendarDays, ListChecks, Eye } from 'lucide-react'
 import {
 	DndContext,
 	closestCorners,
@@ -18,14 +18,23 @@ import { getUsers } from '../../service/userService'
 import { getStatuses } from '../../service/statusService'
 import { isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers } from '../../service/localStorage'
 import {
+	canViewKanban,
+	canViewPersonalKanban,
+	canViewUsers,
+	filterTasksByPermissions
+} from '../../service/permissions'
+import {
 	getLocalTasks,
+	updateTaskLocal,
 	getTaskApartmentId,
 	getTaskAssignedUserId,
 	getTaskStatusId,
 	getTaskDate,
 	getTaskDueTime,
-	getTaskType
+	getTaskType,
+	resolveTaskStatusIdFromChecklist
 } from '../task/TaskFunctions'
+import { TaskDetailPanel } from '../taskDetail'
 import './kanban.css'
 
 const BOARD_COLUMNS = [
@@ -71,7 +80,7 @@ const getChecklistProgress = (task) => {
 }
 
 // Componente para tarjeta draggable
-function DraggableCard({ task, apartmentNameById }) {
+function DraggableCard({ task, apartmentNameById, onOpenTaskDetail }) {
 	const {
 		attributes,
 		listeners,
@@ -99,6 +108,9 @@ function DraggableCard({ task, apartmentNameById }) {
 	const dateLabel = getTaskDate(task)
 	const typeLabel = getTaskType(task)
 	const checklistProgress = getChecklistProgress(task)
+	const progressPercentage = checklistProgress.total > 0
+		? Math.round((checklistProgress.completed / checklistProgress.total) * 100)
+		: 0
 
 	return (
 		<div
@@ -110,21 +122,47 @@ function DraggableCard({ task, apartmentNameById }) {
 		>
 			<div className="kanban-card-header">
 				<span className="kanban-chip">{apartmentName.toUpperCase()}</span>
-				<span className="kanban-type">{typeLabel || 'Sin tipo'}</span>
+				<div className="kanban-card-actions">
+					<span className="kanban-type">{typeLabel || 'Sin tipo'}</span>
+					<button
+						type="button"
+						className="kanban-detail-btn"
+						onPointerDown={(event) => event.stopPropagation()}
+						onClick={(event) => {
+							event.stopPropagation()
+							onOpenTaskDetail(task)
+						}}
+						aria-label={`Ver detalle de ${task.titulo || 'tarea'}`}
+					>
+						<Eye size={13} />
+					</button>
+				</div>
 			</div>
 
 			<h3 className="kanban-card-title">{task.titulo || 'Tarea sin titulo'}</h3>
 
+			<div className="kanban-progress-wrap" aria-label={`Progreso ${checklistProgress.completed} de ${checklistProgress.total || 0} items`}>
+				<div className="kanban-progress-track">
+					<div
+						className="kanban-progress-fill"
+						style={{ width: `${progressPercentage}%` }}
+					/>
+				</div>
+			</div>
+
 			<div className="kanban-card-footer">
+				<div className="kanban-card-meta">
+					<span className="kanban-progress-label">PROGRESO</span>
+					<span className="kanban-checklist">{checklistProgress.completed}/{checklistProgress.total || 0} ITEMS</span>
+				</div>
 				<span className="kanban-date"><CalendarDays size={13} /> {dateLabel || 'Sin fecha'}</span>
-				<span className="kanban-checklist"><ListChecks size={13} /> {checklistProgress.completed}/{checklistProgress.total || 0}</span>
 			</div>
 		</div>
 	)
 }
 
 // Componente para columna droppable
-function DroppableColumn({ column, items, apartmentNameById }) {
+function DroppableColumn({ column, items, apartmentNameById, onOpenTaskDetail }) {
 	const { setNodeRef, isOver } = useDroppable({
 		id: `column-${column.key}`,
 		data: {
@@ -152,6 +190,7 @@ function DroppableColumn({ column, items, apartmentNameById }) {
 							key={task.id}
 							task={task}
 							apartmentNameById={apartmentNameById}
+							onOpenTaskDetail={onOpenTaskDetail}
 						/>
 					))
 				)}
@@ -162,8 +201,9 @@ function DroppableColumn({ column, items, apartmentNameById }) {
 
 export default function Kanban() {
 	const isLoggedIn = isUserLoggedIn()
-	const isAdmin = isUserAdmin()
-	const canAccess = isAdmin || isUserSupervisor()
+	const canViewFullKanban = canViewKanban()
+	const canViewPersonal = canViewPersonalKanban()
+	const canAccess = canViewFullKanban || canViewPersonal
 
 	if (!isLoggedIn) {
 		return <Navigate to="/login?redirect=/kanban" replace />
@@ -179,6 +219,8 @@ export default function Kanban() {
 	const [statuses, setStatuses] = useState([])
 	const [loading, setLoading] = useState(false)
 	const [searchTerm, setSearchTerm] = useState('')
+	const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
+	const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { distance: 8 }),
@@ -189,10 +231,11 @@ export default function Kanban() {
 		const refreshBoard = async () => {
 			setLoading(true)
 
+			const usersFetch = canViewUsers() ? getUsers() : Promise.resolve([])
 			const [tasksResult, apartmentsResult, usersResult, statusesResult] = await Promise.allSettled([
 				getTasks(),
 				getApartments(),
-				getUsers(),
+				usersFetch,
 				getStatuses()
 			])
 
@@ -259,9 +302,13 @@ export default function Kanban() {
 
 	const filteredTasks = useMemo(() => {
 		const term = normalizeText(searchTerm)
-		if (!term) return tasks
+		
+		// Aplicar filtro de permisos
+		const permittedTasks = filterTasksByPermissions(tasks)
+		
+		if (!term) return permittedTasks
 
-		return tasks.filter((task) => {
+		return permittedTasks.filter((task) => {
 			const apartmentId = getTaskApartmentId(task)
 			const apartmentName = apartmentId != null ? (apartmentNameById.get(Number(apartmentId)) || `Apto ${apartmentId}`) : 'Sin apartamento'
 			const title = task?.titulo || ''
@@ -364,6 +411,63 @@ export default function Kanban() {
 		}
 	}
 
+	const handleOpenTaskDetail = (task) => {
+		setSelectedTaskDetail(task)
+		setIsTaskDetailOpen(true)
+	}
+
+	const handleCloseTaskDetail = () => {
+		setIsTaskDetailOpen(false)
+		setSelectedTaskDetail(null)
+	}
+
+	const handleSaveTaskChecklist = async (task, checklistItems = []) => {
+		const taskId = task?.id
+		if (taskId == null) return false
+		const nextStatusId = resolveTaskStatusIdFromChecklist(statuses, checklistItems, getTaskStatusId(task))
+
+		const payload = {
+			titulo: task?.titulo || '',
+			descripcion: task?.descripcion || '',
+			tipo: getTaskType(task) || '',
+			prioridad: task?.prioridad ?? task?.priority ?? '',
+			fecha: getTaskDate(task) || null,
+			dueTime: getTaskDueTime(task) || null,
+			apartmentId: getTaskApartmentId(task),
+			assignedUserId: getTaskAssignedUserId(task),
+			statusId: nextStatusId,
+			estadoId: nextStatusId,
+			checklist: Array.isArray(checklistItems) ? checklistItems : []
+		}
+
+		try {
+			await updateTask(taskId, payload)
+			setTasks((prevTasks) =>
+				prevTasks.map((currentTask) =>
+					Number(currentTask.id) === Number(taskId)
+						? { ...currentTask, checklist: payload.checklist, statusId: nextStatusId, estadoId: nextStatusId }
+						: currentTask
+				)
+			)
+			return true
+		} catch (error) {
+			const localResult = updateTaskLocal(taskId, payload)
+			if (localResult?.success) {
+				setTasks((prevTasks) =>
+					prevTasks.map((currentTask) =>
+						Number(currentTask.id) === Number(taskId)
+							? { ...currentTask, checklist: payload.checklist, statusId: nextStatusId, estadoId: nextStatusId }
+							: currentTask
+					)
+				)
+				return true
+			}
+
+			console.error('Error actualizando checklist:', error)
+			return false
+		}
+	}
+
 	return (
 		<DndContext
 			sensors={sensors}
@@ -398,12 +502,23 @@ export default function Kanban() {
 									column={column}
 									items={items}
 									apartmentNameById={apartmentNameById}
+									onOpenTaskDetail={handleOpenTaskDetail}
 								/>
 							)
 						})}
 					</section>
 				)}
 			</div>
+
+			<TaskDetailPanel
+				isOpen={isTaskDetailOpen}
+				task={selectedTaskDetail}
+				onClose={handleCloseTaskDetail}
+				apartmentNameById={apartmentNameById}
+				userNameById={userNameById}
+				statusNameById={statusLabelById}
+				onSaveChecklist={handleSaveTaskChecklist}
+			/>
 		</DndContext>
 	)
 }

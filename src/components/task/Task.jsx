@@ -9,7 +9,21 @@ import '../users/users.css'
 import { Navigate } from 'react-router-dom'
 import { confirmAction } from '../../utils/alert'
 import { showErrorToast, showSuccessToast } from '../../utils/toast'
-import { isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers } from '../../service/localStorage'
+import { isUserLoggedIn, isUserAdmin, isUserSupervisor, getAllApartments, getAllUsers, getCurrentUser } from '../../service/localStorage'
+import {
+  canViewAllTasks,
+  canViewOwnTasks,
+  canCreateTasks,
+  canEditTasks,
+  canEditOwnTasks,
+  canDeleteTasks,
+  canAssignTasks,
+  canChangeTaskStatus,
+  canViewUsers,
+  isTaskOwner,
+  filterTasksByPermissions,
+  canEditSpecificTask
+} from '../../service/permissions'
 import { getTasks, createTask, updateTask, deleteTask } from '../../service/taskService'
 import { getApartments } from '../../service/apartmentService'
 import { getUsers } from '../../service/userService'
@@ -29,17 +43,20 @@ import {
  getTaskType,
  getTaskDate,
  getTaskDueTime,
+ resolveTaskStatusIdFromChecklist,
  isTrabajadorUser
 } from './TaskFunctions'
 import { openCreateTaskModal, openEditTaskModal } from './TaskForm'
+import { TaskDetailPanel } from '../taskDetail'
 
 
 
 export default function Task() {
- // Control de acceso: solo usuarios autenticados con rol admin o supervisor.
+ // Control de acceso: usuarios autenticados que puedan ver tareas
  const isLoggedIn = isUserLoggedIn()
- const isAdmin = isUserAdmin()
- const canAccess = isAdmin || isUserSupervisor()
+ const canViewAllTasksPermission = canViewAllTasks()
+ const canViewOwnTasksPermission = canViewOwnTasks()
+ const canAccess = canViewAllTasksPermission || canViewOwnTasksPermission
 
  if (!isLoggedIn) {
   return <Navigate to="/login?redirect=/tasks" replace />
@@ -62,9 +79,30 @@ export default function Task() {
  const [selectedType, setSelectedType] = useState('Todos')
  const [selectedAssignee, setSelectedAssignee] = useState("Todos")
  const [selectedDate, setSelectedDate] = useState("Todos")
+ const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
+ const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
+ const getRowsPerPage = () => {
+  if (typeof window === 'undefined') return 10
+
+  const { innerWidth: width, innerHeight: height } = window
+  if (width < 576) return height < 760 ? 5 : 6
+  if (width < 992) return height < 820 ? 7 : 8
+  return height < 820 ? 9 : 10
+ }
+ const [rowsPerPage, setRowsPerPage] = useState(getRowsPerPage)
+ const [currentPage, setCurrentPage] = useState(1)
 
  useEffect(() => {
   refreshAll()
+ }, [])
+
+ useEffect(() => {
+  const handleResize = () => {
+   setRowsPerPage(getRowsPerPage())
+  }
+
+  window.addEventListener('resize', handleResize)
+  return () => window.removeEventListener('resize', handleResize)
  }, [])
 
  const normalizeSearchText = (value = '') => {
@@ -148,14 +186,16 @@ export default function Task() {
  const getTypeColor = (typeLabel = '') => {
   const normalized = normalizeSearchText(typeLabel)
   if (normalized.includes('mantencion')) return '#dc3545'
-  if (normalized.includes('aseo')) return '#00c4f5'
+  if (normalized.includes('aseo')) return '#f1f500'
+  if (normalized.includes('repaso')) return '#00f5e1'
   return '#6c757d' // gris
  }
 
  const getDeadLine = (typeLabel = '') => {
   const normalized = normalizeSearchText(typeLabel)
   if (normalized.includes('mantencion')) return '15:00'
-  if (normalized.includes('aseo')) return 'No aplica'
+  if (normalized.includes('aseo')) return '16:00'
+  if (normalized.includes('repaso')) return '16:00'
   return 'No Aplica' // gris
  }
 
@@ -236,11 +276,14 @@ export default function Task() {
  const refreshAll = async () => {
   setLoading(true)
 
+  // Para TRABAJADOR, no se llama a getUsers() porque el backend devuelve 403
+  const usersFetch = canViewUsers() ? getUsers() : Promise.resolve([])
+
   // Cargamos datos en paralelo para que la tabla ya tenga mapeo de ids a etiquetas.
   const [tasksResult, apartmentsResult, usersResult, statusesResult] = await Promise.allSettled([
    getTasks(),
    getApartments(),
-   getUsers(),
+   usersFetch,
    getStatuses(),
    getTaskType()
   ])
@@ -279,7 +322,10 @@ export default function Task() {
  const filteredTasks = useMemo(() => {
   const term = normalizeSearchText(searchTerm)
 
-  return tasks.filter((task) => {
+  // Primero, filtrar tareas por permisos del usuario
+  let permittedTasks = filterTasksByPermissions(tasks)
+
+  return permittedTasks.filter((task) => {
    const apartmentId = getTaskApartmentId(task)
    const statusId = getTaskStatusId(task)
    const typeId = normalizeSearchText(getTaskType(task))
@@ -297,6 +343,38 @@ export default function Task() {
   })
  }, [tasks, searchTerm, selectedDate, selectedAssignee, selectedApartment, selectedStatus, selectedType, apartmentNameById, userNameById, statusNameById])
 
+ const totalPages = useMemo(() => {
+  return Math.max(1, Math.ceil(filteredTasks.length / rowsPerPage))
+ }, [filteredTasks.length, rowsPerPage])
+
+ const paginatedTasks = useMemo(() => {
+  const start = (currentPage - 1) * rowsPerPage
+  return filteredTasks.slice(start, start + rowsPerPage)
+ }, [filteredTasks, currentPage, rowsPerPage])
+
+ const pageNumbers = useMemo(() => {
+  const maxVisible = 5
+  if (totalPages <= maxVisible) {
+   return Array.from({ length: totalPages }, (_, idx) => idx + 1)
+  }
+
+  let start = Math.max(1, currentPage - 2)
+  let end = Math.min(totalPages, start + maxVisible - 1)
+  start = Math.max(1, end - maxVisible + 1)
+
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+ }, [currentPage, totalPages])
+
+ useEffect(() => {
+  setCurrentPage(1)
+ }, [searchTerm, selectedDate, selectedAssignee, selectedApartment, selectedStatus, selectedType, rowsPerPage])
+
+ useEffect(() => {
+  if (currentPage > totalPages) {
+   setCurrentPage(totalPages)
+  }
+ }, [currentPage, totalPages])
+
  const clearFilters = () => {
   setSelectedApartment('Todos')
   setSelectedStatus('Todos')
@@ -310,7 +388,55 @@ export default function Task() {
 
 
  const handleViewTask = (task) => {
+  setSelectedTaskDetail(task)
+  setIsTaskDetailOpen(true)
+ }
 
+ const handleSaveTaskChecklist = async (task, checklistItems = []) => {
+  const taskId = task?.id
+  if (taskId == null) return false
+
+  const typeLabel = getTaskType(task)
+    const nextStatusId = resolveTaskStatusIdFromChecklist(statuses, checklistItems, getTaskStatusId(task))
+  const payload = {
+   titulo: task?.titulo || '',
+   descripcion: task?.descripcion || '',
+   tipo: typeLabel || '',
+   prioridad: task?.prioridad ?? task?.priority ?? getPriorityByType(typeLabel),
+   fecha: getTaskDate(task) || null,
+   dueTime: getTaskDueTime(task) || null,
+   apartmentId: getTaskApartmentId(task),
+   assignedUserId: getTaskAssignedUserId(task),
+     statusId: nextStatusId,
+     estadoId: nextStatusId,
+   checklist: Array.isArray(checklistItems) ? checklistItems : []
+  }
+
+  try {
+   try {
+    await updateTask(taskId, payload)
+   } catch (err) {
+    const localResult = updateTaskLocal(taskId, payload)
+    if (!localResult?.success) {
+     throw new Error(localResult?.message || 'No se pudo actualizar el checklist en localStorage')
+    }
+    showErrorToast('Se uso copia local por falla del servidor')
+   }
+
+   showSuccessToast('Checklist actualizado')
+   await refreshAll()
+   return true
+  } catch (err) {
+   console.error('Error updating checklist', err)
+   const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error actualizando checklist'
+   showErrorToast(msg)
+   return false
+  }
+ }
+
+ const handleCloseTaskDetail = () => {
+  setIsTaskDetailOpen(false)
+  setSelectedTaskDetail(null)
  }
 
  const handleDeleteTask = (task) => {
@@ -398,7 +524,7 @@ export default function Task() {
    <CCard className="users-card mb-4 shadow-sm border-0">
     <CCardHeader className="bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
      <h4 className="mb-0 fw-bold">Gestion de Tareas</h4>
-     {isAdmin && (
+     {canCreateTasks() && (
       <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
        <CIcon icon={icon.cilPlus} /> Anadir Tarea
       </CButton>
@@ -536,12 +662,12 @@ export default function Task() {
          <CTableHeaderCell className='d-none d-lg-table-cell'>Hora Limite</CTableHeaderCell>
          <CTableHeaderCell className='d-none d-lg-table-cell'>Tipo</CTableHeaderCell>
          <CTableHeaderCell>Estado</CTableHeaderCell>
-         {isAdmin && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
+         {(canEditTasks() || canDeleteTasks() || canChangeTaskStatus()) && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
         </CTableRow>
        </CTableHead>
 
        <CTableBody>
-        {filteredTasks.map((task) => {
+        {paginatedTasks.map((task) => {
          const apartmentId = getTaskApartmentId(task)
          const assignedUserId = getTaskAssignedUserId(task)
          const statusLabel = getTaskStatusLabel(task)
@@ -613,19 +739,21 @@ export default function Task() {
             </div>
            </CTableDataCell>
 
-           {isAdmin && (
+           {(canEditSpecificTask(task) || canDeleteTasks() || canChangeTaskStatus()) && (
             <CTableDataCell className="d-none d-sm-table-cell">
              <div className="users-actions d-flex justify-content-center gap-2">
-              <CButton
-               color="info"
-               variant="outline"
-               className="users-action-btn"
-               title="Editar tarea"
-               aria-label={`Editar tarea ${task.titulo || 'tarea'}`}
-               onClick={() => void handleEditTask(task)}
-              >
-               <CIcon icon={icon.cilPencil} size="sm" />
-              </CButton>
+              {canEditSpecificTask(task) && (
+               <CButton
+                color="info"
+                variant="outline"
+                className="users-action-btn"
+                title="Editar tarea"
+                aria-label={`Editar tarea ${task.titulo || 'tarea'}`}
+                onClick={() => void handleEditTask(task)}
+               >
+                <CIcon icon={icon.cilPencil} size="sm" />
+               </CButton>
+              )}
               <CButton
                color="success"
                variant="outline"
@@ -636,15 +764,17 @@ export default function Task() {
               >
                <CIcon icon={icon.cilZoom} size="sm" />
               </CButton>
-              <CButton
-               color="danger"
-               className="users-action-btn users-action-btn-danger"
-               title="Eliminar tarea"
-               aria-label={`Eliminar tarea ${task.titulo || 'tarea'}`}
-               onClick={() => handleDeleteTask(task)}
-              >
-               <CIcon icon={icon.cilTrash} size="sm" />
-              </CButton>
+              {canDeleteTasks() && (
+               <CButton
+                color="danger"
+                className="users-action-btn users-action-btn-danger"
+                title="Eliminar tarea"
+                aria-label={`Eliminar tarea ${task.titulo || 'tarea'}`}
+                onClick={() => handleDeleteTask(task)}
+               >
+                <CIcon icon={icon.cilTrash} size="sm" />
+               </CButton>
+              )}
              </div>
             </CTableDataCell>
            )}
@@ -657,17 +787,37 @@ export default function Task() {
 
      <div className="users-footer d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
       <div className="small text-secondary">
-       {loading ? 'Cargando tareas...' : `Mostrando ${filteredTasks.length} tareas`}
+       {loading
+        ? 'Cargando tareas...'
+        : `Mostrando ${paginatedTasks.length} de ${filteredTasks.length} tareas (pagina ${currentPage}/${totalPages})`}
       </div>
       <CPagination aria-label="Paginacion de tareas" className="mb-0" style={{ cursor: 'pointer' }}>
-       <CPaginationItem disabled>Anterior</CPaginationItem>
-       <CPaginationItem active>1</CPaginationItem>
-       <CPaginationItem>2</CPaginationItem>
-       <CPaginationItem>Siguiente</CPaginationItem>
+       <CPaginationItem disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}>Anterior</CPaginationItem>
+       {pageNumbers.map((page) => (
+        <CPaginationItem
+         key={`task-page-${page}`}
+         active={page === currentPage}
+         onClick={() => setCurrentPage(page)}
+        >
+         {page}
+        </CPaginationItem>
+       ))}
+       <CPaginationItem disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}>Siguiente</CPaginationItem>
       </CPagination>
      </div>
     </CCardBody>
    </CCard>
+
+    <TaskDetailPanel
+     isOpen={isTaskDetailOpen}
+     task={selectedTaskDetail}
+     onClose={handleCloseTaskDetail}
+     apartmentNameById={apartmentNameById}
+     userNameById={userNameById}
+     statusNameById={statusNameById}
+     getDeadLine={getDeadLine}
+     onSaveChecklist={handleSaveTaskChecklist}
+    />
   </div>
  )
 }

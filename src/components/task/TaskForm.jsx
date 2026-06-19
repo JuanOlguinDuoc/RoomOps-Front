@@ -40,6 +40,7 @@ export const openCreateTaskModal = async (apartments = [], users = [], statuses 
         <select id="swal-tipo" class="users-create-input users-create-select">
           <option value="">Selecciona tipo</option>
           <option value="Aseo">Aseo</option>
+          <option value="Repaso">Repaso</option>
           <option value="Mantencion">Mantencion</option>
         </select>
         <select id="swal-apartmentId" class="users-create-input users-create-select">
@@ -141,6 +142,7 @@ export const openEditTaskModal = async (task = {}, apartments = [], users = [], 
         <select id="swal-tipo" class="users-create-input users-create-select">
           <option value="" ${!initialType ? 'selected' : ''}>Selecciona tipo</option>
           <option value="Aseo" ${initialType === 'Aseo' ? 'selected' : ''}>Aseo</option>
+          <option value="Repaso" ${initialType === 'Repaso' ? 'selected' : ''}>Repaso</option>
           <option value="Mantencion" ${initialType === 'Mantencion' ? 'selected' : ''}>Mantencion</option>
         </select>
         <select id="swal-apartmentId" class="users-create-input users-create-select">

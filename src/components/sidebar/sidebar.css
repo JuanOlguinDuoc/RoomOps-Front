@@ -27,8 +27,7 @@
   --cui-sidebar-nav-link-icon-color: var(--roomops-text-muted);
   --cui-sidebar-nav-link-hover-bg: var(--roomops-accent-soft);
   --cui-sidebar-nav-link-hover-color: var(--roomops-text);
-  background:
-    linear-gradient(180deg, rgba(30, 83, 110, 0.96) 0%, rgba(26, 51, 74, 0.98) 58%, rgba(26, 51, 74, 1) 100%) !important;
+  background: linear-gradient(180deg, var(--roomops-bg-2) 0%, var(--roomops-bg-1) 62%, var(--roomops-bg-1) 100%) !important;
   border-right: 1px solid var(--roomops-border) !important;
   color: var(--roomops-text-muted);
 }
@@ -82,7 +81,7 @@
 
 .roomops-sidebar .sidebar-nav .nav-link.active,
 .roomops-sidebar .sidebar-nav .nav-link:focus-visible {
-  background-color: rgba(90, 165, 205, 0.32);
+  background-color: var(--roomops-accent-soft);
   color: var(--roomops-accent);
 }
 
@@ -95,13 +94,79 @@
 
 .roomops-sidebar .sidebar-nav .nav-link:hover {
   background-color: var(--roomops-accent);
-  color: #052937;
-  box-shadow: 0 0 0 3px rgba(39, 230, 236, 0.38), 0 0 12px rgba(39, 230, 236, 0.32);
+  color: #120f24;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.38), 0 0 12px rgba(167, 139, 250, 0.32);
 }
 
 .roomops-sidebar .sidebar-nav .nav-link:hover .nav-icon,
 .roomops-sidebar .sidebar-nav .nav-link:hover svg {
-  color: #052937;
+  color: #120f24;
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar {
+  --cui-sidebar-color: #e9edf8;
+  --cui-sidebar-brand-color: #ffffff;
+  --cui-sidebar-nav-link-color: #e9edf8;
+  --cui-sidebar-nav-link-icon-color: #d8def0;
+  --cui-sidebar-nav-link-hover-bg: rgba(255, 255, 255, 0.18);
+  --cui-sidebar-nav-link-hover-color: #ffffff;
+  background: linear-gradient(180deg, #666da3 0%, #6688a2 52%, #719eaa 100%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #e9edf8;
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-header,
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-footer {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-brand span,
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-title {
+  color: #ffffff;
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link {
+  color: #e9edf8;
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link .nav-icon,
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link svg {
+  color: #d8def0;
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link.active,
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link:focus-visible {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link.active .nav-icon,
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link.active svg,
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link:focus-visible .nav-icon,
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link:focus-visible svg {
+  color: #ffffff;
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18), 0 8px 16px rgba(45, 62, 95, 0.32);
+}
+
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link:hover .nav-icon,
+html:not(.theme-logo-dark) .roomops-sidebar .sidebar-nav .nav-link:hover svg {
+  color: #ffffff;
+}
+
+html.theme-logo-dark .roomops-sidebar .sidebar-nav .nav-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18), 0 8px 16px rgba(45, 62, 95, 0.32);
+}
+
+html.theme-logo-dark .roomops-sidebar .sidebar-nav .nav-link:hover .nav-icon,
+html.theme-logo-dark .roomops-sidebar .sidebar-nav .nav-link:hover svg {
+  color: #ffffff;
 }
 
 /* ── Tablet (768-991px): CoreUI trata <992px como mobile y oculta el sidebar.

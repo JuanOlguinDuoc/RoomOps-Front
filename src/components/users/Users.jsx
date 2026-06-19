@@ -30,13 +30,16 @@ import {
   getAllUsers, createUserAdmin, updateUserAdmin,
   isUserLoggedIn, isUserAdmin, isUserSupervisor
 } from '../../service/localStorage'
+import {
+  canViewUsers,
+  canManageUsers
+} from '../../service/permissions'
 import { getUsers, createUser, updateUser, updateUserEstado } from '../../service/userService'
 
 export default function Users() {
-  // Control de acceso: solo usuarios autenticados con rol admin o supervisor.
+  // Control de acceso: solo usuarios que puedan ver usuarios
   const isLoggedIn = isUserLoggedIn()
-  const isAdmin = isUserAdmin()
-  const canAccess = isAdmin || isUserSupervisor()
+  const canAccess = canViewUsers()
 
   // Si no está logueado, redirigir al login
   if (!isLoggedIn) {
@@ -57,6 +60,16 @@ export default function Users() {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedRole, setSelectedRole] = useState('Todos')
   const [selectedStatus, setSelectedStatus] = useState('Todos')
+  const getRowsPerPage = () => {
+    if (typeof window === 'undefined') return 10
+
+    const { innerWidth: width, innerHeight: height } = window
+    if (width < 576) return height < 760 ? 5 : 6
+    if (width < 992) return height < 820 ? 7 : 8
+    return height < 820 ? 9 : 10
+  }
+  const [rowsPerPage, setRowsPerPage] = useState(getRowsPerPage)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // El formulario usa la forma del backend (run, firstName, lastName, email, password, role).
   const [nuevoUser, setNuevoUser] = useState({ run: '', firstName: '', lastName: '', email: '', password: '', role: '' })
@@ -64,6 +77,15 @@ export default function Users() {
   // Cargar usuarios al montar la vista.
   useEffect(() => {
     refreshAll()
+  }, [])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setRowsPerPage(getRowsPerPage())
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const normalizeSearchText = (value = '') => {
@@ -105,6 +127,38 @@ export default function Users() {
     })
   }, [users, searchTerm, selectedRole, selectedStatus])
 
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage))
+  }, [filteredUsers.length, rowsPerPage])
+
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage
+    return filteredUsers.slice(start, start + rowsPerPage)
+  }, [filteredUsers, currentPage, rowsPerPage])
+
+  const pageNumbers = useMemo(() => {
+    const maxVisible = 5
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1)
+    }
+
+    let start = Math.max(1, currentPage - 2)
+    let end = Math.min(totalPages, start + maxVisible - 1)
+    start = Math.max(1, end - maxVisible + 1)
+
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+  }, [currentPage, totalPages])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedRole, selectedStatus, rowsPerPage])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
   const refreshAll = async () => {
     setLoading(true)
     // Estrategia híbrida: primero intentamos backend, si falla usamos localStorage.
@@ -123,6 +177,52 @@ export default function Users() {
     const cleaned = String(value).replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9)
     if (cleaned.length <= 1) return cleaned
     return `${cleaned.slice(0, -1)}-${cleaned.slice(-1)}`
+  }
+
+  const getApiErrorMessage = (err) => {
+    const backendError = err?.response?.data?.error
+    const backendMessage = err?.response?.data?.message || err?.response?.data?.mensaje
+    const genericMessages = ['error al crear usuario', 'error creando usuario']
+
+    if (backendError && String(backendError).trim()) return String(backendError).trim()
+
+    if (backendMessage && String(backendMessage).trim()) {
+      const normalizedMessage = String(backendMessage)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+
+      if (!genericMessages.includes(normalizedMessage)) {
+        return String(backendMessage).trim()
+      }
+    }
+
+    return err?.message || 'Error creando usuario'
+  }
+
+  const isDuplicateUserError = (err) => {
+    const msg = getApiErrorMessage(err)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+
+    return msg.includes('correo ya esta registrado')
+      || msg.includes('el correo ya esta registrado')
+      || msg.includes('run ya esta registrado')
+      || msg.includes('el run ya esta registrado')
+      || msg.includes('duplicate')
+      || msg.includes('unique')
+  }
+
+  const shouldUseLocalFallback = (err) => {
+    const status = err?.response?.status
+
+    if (!status) return true
+    if (status >= 500) return true
+    if (status === 400 || status === 409) return false
+
+    return false
   }
 
   const resetForm = () => {
@@ -202,16 +302,28 @@ export default function Users() {
       try {
         await createUser(result.value)
       } catch (err) {
-        // Fallback local por si no hay backend disponible.
+        const msg = getApiErrorMessage(err)
+
+        if (isDuplicateUserError(err)) {
+          showErrorToast(msg)
+          return
+        }
+
+        if (!shouldUseLocalFallback(err)) {
+          showErrorToast(msg)
+          return
+        }
+
+        // Fallback local solo para errores tecnicos (sin respuesta/5xx).
         createUserAdmin(result.value)
+        showErrorToast('Se uso copia local por falla del servidor')
       }
 
       showSuccessToast('Usuario creado')
       await refreshAll()
     } catch (err) {
       console.error('Error creating user', err)
-      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error creando usuario'
-      showErrorToast(msg)
+      showErrorToast(getApiErrorMessage(err))
     }
   }
 
@@ -374,7 +486,7 @@ export default function Users() {
         {/* Encabezado principal. */}
         <CCardHeader className="bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
           <h4 className="mb-0 fw-bold">Gestión de Usuarios</h4>
-          {isAdmin && (
+          {canManageUsers() && (
             <CButton color="dark" className="d-flex align-items-center gap-2" onClick={handleStartCreate}>
               <CIcon icon={cilPlus} /> Añadir usuario
             </CButton>
@@ -462,11 +574,11 @@ export default function Users() {
                 <CTableHeaderCell className="text-start">Usuario</CTableHeaderCell>
                 <CTableHeaderCell>Rol</CTableHeaderCell>
                 <CTableHeaderCell className="d-none d-md-table-cell">Estado</CTableHeaderCell>
-                {isAdmin && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
+                {canManageUsers() && <CTableHeaderCell className="d-none d-sm-table-cell">Acciones</CTableHeaderCell>}
               </CTableRow>
             </CTableHead>
             <CTableBody>
-              {filteredUsers
+              {paginatedUsers
                 .map((user) => (
                   <CTableRow key={user.id || user._id || user.email}>
                     <CTableDataCell className="text-start d-none d-sm-table-cell">
@@ -497,7 +609,7 @@ export default function Users() {
                     </CTableDataCell>
 
                     {/* Columna de acciones. */}
-                    {isAdmin && (
+                    {canManageUsers() && (
                     <CTableDataCell className="d-none d-sm-table-cell">
                       <div className="users-actions d-flex justify-content-center gap-2">
                         <CButton
@@ -552,13 +664,22 @@ export default function Users() {
           {/* Paginacion inferior. */}
           <div className="users-footer d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
             <div className="small text-secondary">
-              {loading ? 'Cargando usuarios...' : `Mostrando ${filteredUsers.length} usuarios`}
+              {loading
+                ? 'Cargando usuarios...'
+                : `Mostrando ${paginatedUsers.length} de ${filteredUsers.length} usuarios (pagina ${currentPage}/${totalPages})`}
             </div>
             <CPagination aria-label="Page navigation" className="mb-0" style={{ cursor: 'pointer' }}>
-              <CPaginationItem disabled>Anterior</CPaginationItem>
-              <CPaginationItem active>1</CPaginationItem>
-              <CPaginationItem>2</CPaginationItem>
-              <CPaginationItem>Siguiente</CPaginationItem>
+              <CPaginationItem disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}>Anterior</CPaginationItem>
+              {pageNumbers.map((page) => (
+                <CPaginationItem
+                  key={`users-page-${page}`}
+                  active={page === currentPage}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </CPaginationItem>
+              ))}
+              <CPaginationItem disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}>Siguiente</CPaginationItem>
             </CPagination>
           </div>
         </CCardBody>

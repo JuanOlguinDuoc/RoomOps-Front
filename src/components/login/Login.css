@@ -270,3 +270,194 @@
     }
 }
 
+/* ------------------------------------------------------------------
+   Login refresh (estilo tarjeta clara sobre fondo azul texturizado)
+------------------------------------------------------------------- */
+
+.login-page {
+    background: var(--roomops-app-bg);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.login-page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(134, 203, 212, 0.55), rgba(129, 144, 199, 0.62));
+    pointer-events: none;
+    z-index: 1;
+}
+
+.login-page .form {
+    width: min(100%, 470px);
+    background: #f4f6f8;
+    border: 1px solid rgba(15, 35, 61, 0.14);
+    border-radius: 12px;
+    box-shadow:
+        0 20px 40px rgba(7, 19, 35, 0.35),
+        0 6px 14px rgba(7, 19, 35, 0.2);
+    backdrop-filter: none;
+    color: #0f2a4d;
+    padding: 2rem 1.75rem 1.8rem;
+    z-index: 2;
+}
+
+.login-page .form::before {
+    display: none;
+}
+
+.login-page .form h2 {
+    margin: 0 0 1.6rem;
+    color: #122e53;
+    background: none;
+    -webkit-text-fill-color: initial;
+    font-size: clamp(2rem, 3.7vw, 3rem);
+    font-weight: 700;
+    font-family: 'Merriweather', Georgia, 'Times New Roman', serif;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.login-page .login-form {
+    gap: 1rem;
+}
+
+.login-page .login-form input {
+    background: #eef1f4;
+    border: 2px solid #d0d5dc;
+    border-radius: 8px;
+    color: #314155;
+    padding: 0.95rem 1.1rem;
+    font-size: 1.05rem;
+    box-shadow: none;
+    transform: none;
+}
+
+.login-page .login-form input::placeholder {
+    color: #6c7686;
+}
+
+.login-page .login-form input:hover {
+    border-color: #b7bec8;
+    background: #f1f3f6;
+}
+
+.login-page .login-form input:focus {
+    border-color: #89a2bf;
+    background: #f7f9fb;
+    box-shadow: 0 0 0 3px rgba(25, 78, 140, 0.12);
+    transform: none;
+}
+
+.login-page .login-form .btn {
+    margin-top: 0.8rem;
+    min-height: 58px;
+    border-radius: 8px;
+    border: 1px solid rgba(9, 38, 74, 0.65);
+    background: linear-gradient(180deg, #123f73, #0f345f);
+    color: #f8fbff;
+    box-shadow: 0 8px 18px rgba(13, 42, 78, 0.35);
+    font-size: 1.12rem;
+    font-family: 'Merriweather', Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+}
+
+.login-page .login-form .btn:hover {
+    background: linear-gradient(180deg, #174b84, #123a68);
+    transform: translateY(-1px);
+    color: #ffffff;
+}
+
+.login-page .login-form .btn:active {
+    transform: translateY(0);
+}
+
+.login-page .login-form .btn:disabled {
+    opacity: 0.78;
+    cursor: not-allowed;
+}
+
+.login-page .login-form .btn span {
+    display: none;
+}
+
+@media (max-width: 540px) {
+    .login-page {
+        padding: 1.25rem 0.9rem;
+    }
+
+    .login-page .form {
+        padding: 1.6rem 1.2rem 1.4rem;
+        border-radius: 10px;
+    }
+
+    .login-page .form h2 {
+        margin-bottom: 1.25rem;
+        font-size: clamp(1.85rem, 8vw, 2.35rem);
+    }
+
+    .login-page .login-form .btn {
+        min-height: 54px;
+        font-size: 1.05rem;
+    }
+
+}
+
+/* ------------------------------------------------------------------
+   Dark mode del formulario de login
+------------------------------------------------------------------- */
+
+html.theme-logo-dark .login-page .form {
+    background: linear-gradient(180deg, rgba(28, 22, 51, 0.95), rgba(19, 14, 35, 0.95));
+    border: 1px solid rgba(167, 139, 250, 0.24);
+    box-shadow:
+        0 20px 40px rgba(7, 6, 18, 0.45),
+        0 6px 14px rgba(7, 6, 18, 0.3);
+    color: var(--roomops-text);
+}
+
+html.theme-logo-dark .login-page .form h2 {
+    color: var(--roomops-text);
+}
+
+html.theme-logo-dark .login-page .login-form input {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(167, 139, 250, 0.24);
+    color: var(--roomops-text);
+}
+
+html.theme-logo-dark .login-page .login-form input::placeholder {
+    color: var(--roomops-text-muted);
+}
+
+html.theme-logo-dark .login-page .login-form input:hover {
+    border-color: rgba(167, 139, 250, 0.38);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+html.theme-logo-dark .login-page .login-form input:focus {
+    border-color: rgba(39, 230, 236, 0.55);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(39, 230, 236, 0.2);
+}
+
+html.theme-logo-dark .login-page .login-form .btn {
+    border-color: rgba(39, 230, 236, 0.4);
+    background: linear-gradient(180deg, #2d244f, #1f1938);
+    color: var(--roomops-text);
+    box-shadow: 0 10px 20px rgba(7, 6, 18, 0.45);
+}
+
+html.theme-logo-dark .login-page .login-form .btn:hover {
+    background: linear-gradient(180deg, #3a2d63, #2a214a);
+    color: #ffffff;
+}
+
+html.theme-logo-dark .login-page::before {
+    background: linear-gradient(120deg, rgba(40, 42, 80, 0.62), rgba(30, 24, 58, 0.74));
+}
+
