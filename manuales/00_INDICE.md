@@ -45,6 +45,9 @@ Cada manual tiene dos enfoques:
 10. 10_UNION_COMPLETA.md
    - Union de todos los manuales (00 al 09) en un solo documento. Util para lectura integral o cuando se necesita un archivo consolidado.
 
+11. 11_MANUAL_DE_USUARIO_POR_ROL.md
+   - Manual de usuario especifico por rol, con acciones permitidas, acciones prohibidas y flujo de uso para ADMIN, SUPERVISOR y TRABAJADOR.
+
 ## Orden recomendado de lectura
 
 1. Primero 01 y 02 para entender flujo base de la aplicacion.

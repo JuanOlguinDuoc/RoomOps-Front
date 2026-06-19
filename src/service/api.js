@@ -3,9 +3,9 @@ import { clearUserSession, hasValidToken } from './localStorage';
 
 const MODE = import.meta.env.MODE;
 const DEFAULT_API_URL_BY_MODE = {
-  aws: 'http://ec2-3-85-173-83.compute-1.amazonaws.com:5000',
-  production: 'http://ec2-3-85-173-83.compute-1.amazonaws.com:5000',
-  development: 'http://localhost:5000',
+    aws: 'https://roomops.duckdns.org',
+    production: 'https://roomops.duckdns.org',
+    development: 'http://localhost:5000',
 };
 
 const API_BASE_URL =
